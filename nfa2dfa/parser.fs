@@ -35,7 +35,8 @@ module NfaParser =
         "start|"+
         "-|>|\\(\\(|\\)\\)|\\(|\\)|"+
         "[a-zA-Z0-9]+|"+
-        "\\n+| "
+        "\\n+| "+
+        "#[^\\n]+"
     (*
      * Lexer
      * Replaces every token with "" in input str.
@@ -59,7 +60,7 @@ module NfaParser =
                 tokensL.Add(RightPointer)
             elif t = "-" then
                 tokensL.Add(Line)
-            elif t = " " then ()
+                elif t = " " || t.[0] = '#' then ()
             elif l > 0 && t.[0] = '\n' then
                 tokensL.Add(Newline)
             else

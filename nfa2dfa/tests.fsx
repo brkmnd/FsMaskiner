@@ -86,6 +86,7 @@ let status17 = nfa2dfa("nfa17",nfa17,echo)
 
 let nfa16 =
     "start(1) -eps>(2) -eps>(4)\n"+
+    "# some comment"+
     "(2) -b>(3)\n"+
     "(3) -a>(3) -eps>(6)\n"+
     "(4) -eps>(5) -b>(5)\n"+
