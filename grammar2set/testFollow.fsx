@@ -2,7 +2,7 @@ open Maskiner
 open System.Collections.Generic
 open System.Linq
 let fopen name =
-    let l = System.IO.File.ReadAllLines (name)
+    let l = System.IO.File.ReadAllLines ("tests/" + name)
     Array.fold
         (fun acc line -> acc + line + "\n")
         ""
