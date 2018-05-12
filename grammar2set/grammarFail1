@@ -1,0 +1,2 @@
+prod A  -> B
+prod B  -> A | "b"

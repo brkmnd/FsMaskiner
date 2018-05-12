@@ -1,0 +1,15 @@
+prod Prog   -> Stmt
+prod Stmt   -> "if" Expr "then" Block
+prod Stmt   -> "while" Expr "do" Block
+prod Stmt   -> Expr ";"
+prod Expr   -> Term "=>" "id"
+prod Expr   -> "isZero?" Term
+prod Expr   -> "not" Expr
+prod Expr   -> "++" "id"
+prod Expr   -> "--" "id"
+prod Term   -> "id"
+prod Term   -> "const"
+prod Block  -> Stmt
+prod Block  -> "{" Stmts "}"
+prod Stmts  -> Stmt Stmts
+prod Stmts  ->

@@ -1,0 +1,10 @@
+prod A   -> B A'
+prod A'  -> "+" B A'
+prod A'  -> "-" B A'
+prod A'  ->
+prod B   -> C B'
+prod B'  -> "*" C B'
+prod B'  -> "/" C B'
+prod B'  -> 
+prod C   -> "(" A ")"
+prod C   -> "num"

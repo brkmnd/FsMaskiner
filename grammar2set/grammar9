@@ -1,0 +1,3 @@
+prod A   -> "a" A | B
+prod B   -> "b" B | C
+prod C   -> A | 

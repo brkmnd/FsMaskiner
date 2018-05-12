@@ -1,0 +1,10 @@
+prod C  -> P F "class" "id" X Y
+prod P  -> "public" |
+prod F  -> "final"
+prod F  ->
+prod X  -> "extends" "id"
+prod X  ->
+prod Y  -> "implements" I
+prod Y  ->
+prod I  -> "id" J
+prod J  -> "," I prod J ->

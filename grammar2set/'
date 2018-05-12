@@ -1,0 +1,315 @@
+namespace Maskiner
+module Grammar2Set =
+    open System.Collections.Generic
+    type ProdExp =
+        | NonTerm of string
+        | Term of string
+        | Dollar
+    type Nullable =
+        | T
+        | F
+        | Depend of string list
+    type First =
+        | FirstOf of string
+        | TermSet of ProdExp
+    type FollowConst =
+        | FollowOf of string
+        | FirstSet of ProdExp list
+        | SolvedSet of ProdExp list
+    let add2solved (solved : Dictionary<string,HashSet<ProdExp>>) n vList =
+        if solved.ContainsKey(n) then
+            //Iterate through old val and new val only adding values
+            //That are not present in old val. Return bool * solved
+            //where bool checks if new elements are added.
+            let (newAdded,_) =
+                List.fold
+                    (fun (newAdded,set : HashSet<ProdExp>) elm ->
+                        (set.Add(elm) || newAdded,set)
+                        )
+                    (false,solved.[n])
+                    vList
+            (newAdded,solved)
+        else
+            let newSet =
+                List.fold
+                    (fun (set : HashSet<ProdExp>) elm ->
+                        let add2set = set.Add(elm)
+                        set
+                        )
+                    (new HashSet<ProdExp>())
+                    vList
+            solved.Add(n,newSet)
+            (true,solved)
+    let addSet2solved (solved : Dictionary<string,HashSet<ProdExp>>) n set =
+        if solved.ContainsKey(n) then
+            let mutable added = false
+            for elm in set do
+                added <- solved.[n].Add(elm) || added
+            (added,solved)
+        else
+            solved.Add(n,set)
+            (true,solved)
+    let calcNullable grammar =
+        let isTrue = function
+            | T -> true
+            | _ -> false
+        let isFalse = function
+            | F -> true
+            | _ -> false
+        let isDep = function
+            | Depend _ -> true
+            | _ -> false
+        let add2solved (solvedNullables : Dictionary<string,bool>) n v =
+            if solvedNullables.ContainsKey(n) then solvedNullables
+            else solvedNullables.Add(n,v); solvedNullables
+        let add2unsolved (unsolvedNullables : Dictionary<string,Nullable list>) n v =
+            if unsolvedNullables.ContainsKey(n) then unsolvedNullables
+            else unsolvedNullables.Add(n,v); unsolvedNullables
+        let initIter_rExps (rExps : ProdExp list) =
+            List.fold
+                (fun n0 rExp ->
+                    match (rExp,n0) with
+                    | (_,F) -> F
+                    | (Term _,_)  -> F
+                    | (NonTerm nonT,Depend d0) ->
+                        Depend (nonT::d0)
+                    | (NonTerm nonT,_) ->
+                        Depend [nonT]
+                    | _ -> failwith "nullable : garbage in grammar"
+                    )
+                T
+                rExps
+        let initIter_rSide (rSide : (ProdExp list) list) =
+            List.fold
+                (fun nullList rightSide ->
+                    match (rightSide,nullList) with
+                    | (_,T::nList) -> T::nList
+                    | ([],_) -> T::nullList
+                    | (rExps,_) ->
+                        (initIter_rExps rExps)::nullList
+                    )
+                []
+                rSide
+        let initIter =
+            Dict<string,(ProdExp list) list>.fold
+                (fun (nullableS : Dictionary<string,Nullable list>) prod ->
+                    let nullable = initIter_rSide prod.Value
+                    nullableS.Add(prod.Key,nullable)
+                    nullableS
+                    )
+                (new Dictionary<string,Nullable list>())
+                grammar
+        let rec solveDependencies (solved : Dictionary<string,bool>) (unsolved : Dictionary<string,Nullable list>) =
+            let (newSolved,newUnsolved) =
+                Dict<string,Nullable list>.fold
+                    (fun (newSolved,newUnsolved) prod ->
+                        let (retlist,isNullable) =
+                            List.fold
+                                (fun (retlist,isNullable) disj ->
+                                    match disj with
+                                    | _ when isNullable -> ([],true)
+                                    | T -> ([],true)
+                                    | F -> (retlist,false)
+                                    | Depend deps ->
+                                        let (newDeps,isNullable0) =
+                                            List.fold
+                                                (fun (retlist,isNullable) dep ->
+                                                    match dep with
+                                                    | _ when not isNullable -> ([],false)
+                                                    | prod when solved.ContainsKey(prod) ->
+                                                        if solved.[prod] then
+                                                            (retlist,true)
+                                                        else ([],false)
+                                                    | prod -> (prod::retlist,isNullable)
+                                                    )
+                                                ([],true)
+                                                deps
+                                        let isSolved = List.length newDeps = 0
+                                        if isSolved && isNullable0 then
+                                            ([],true)
+                                        elif isSolved then
+                                            (retlist,false)
+                                        else
+                                            ((Depend newDeps)::retlist,false)
+                                    )
+                                ([],false)
+                                prod.Value
+                        let isSolved = List.length retlist = 0
+                        if isSolved then
+                            (add2solved newSolved prod.Key isNullable,newUnsolved)
+                        else
+                            (newSolved,add2unsolved newUnsolved prod.Key retlist)
+                        )
+                    (solved,new Dictionary<string,Nullable list>())
+                    unsolved
+            if unsolved.Count = newUnsolved.Count then
+                failwith "circular error nullable"
+            elif newUnsolved.Count > 0 then
+                solveDependencies newSolved newUnsolved
+            else
+                newSolved
+        solveDependencies (new Dictionary<string,bool>()) initIter
+    let calcFirst grammar (nullableS : Dictionary<string,bool>) =
+        let isNullable pName =
+            if nullableS.ContainsKey(pName) then nullableS.[pName]
+            else failwith (sprintf "First : Nullable(%s) not found" pName)
+        let add2set (sets : Dictionary<string,First>) pName v =
+            if sets.ContainsKey(pName) then ()
+            else sets.Add(pName,v)
+        let add2unsolved (sets : Dictionary<string,First>) pName v =
+            if sets.ContainsKey(pName) then sets
+            else sets.Add(pName,v); sets
+        let initIter_exps (acc,solved) (rightSide : ProdExp list) =
+            let (retset,_) =
+                List.fold
+                    (fun (initSet,fin) rExp ->
+                        match rExp with
+                        | _ when fin ->
+                            (initSet,true)
+                        | NonTerm pName when pName|>isNullable ->
+                            ((FirstOf pName)::initSet,fin)
+                        | NonTerm pName ->
+                            ((FirstOf pName)::acc0,true)
+                        | Term term ->
+                            ((Term term)::acc0,true,solved)
+                        | _ -> failwith "first : garbage in grammar"
+                        )
+                    (acc,false,solved)
+                    rightSide
+            (retset,solved)
+        let initIter_rSide (firstSets : Dictionary<string,First>) (prod : KeyValuePair<string,(ProdExp list) list>) =
+            let (retset,solved) =
+                List.fold
+                    initIter_exps
+                    ([],true)
+                    prod.Value
+            if solved then
+                add2set firstSets prod.Key (Solved retset)
+            else
+                add2set firstSets prod.Key (Unsolved retset)
+            firstSets
+        let initIter =
+            Dict<string,(ProdExp list) list>.fold
+                initIter_rSide
+                (new Dictionary<string,First>())
+                grammar
+        let rec solveDependencies (solved : Dictionary<string,ProdExp list>) (unsolved : Dictionary<string,First>) =
+            solved
+        solveDependencies (new Dictionary<string,HashSet<ProdExp>>()) initIter
+    let calcFollow grammar (firstS : Dictionary<string,HashSet<ProdExp>>) (nullableS : Dictionary<string,bool>) =
+        let (newGrammar,_) =
+            let d = new Dictionary<string,(ProdExp list) list>()
+            Dict<string,(ProdExp list) list>.fold
+                (fun
+                    (acc : Dictionary<string,(ProdExp list) list>,fElm)
+                    (prod : KeyValuePair<string,(ProdExp list) list>) ->
+                        let addFirst =
+                            if fElm then acc.Add("_",[[NonTerm prod.Key;Dollar]])
+                            else ()
+                        acc.Add(prod.Key,prod.Value)
+                        (acc,false)
+                        )
+                (d,true)
+                grammar
+        let isNullable pName =
+            if nullableS.ContainsKey(pName) then nullableS.[pName]
+            else failwith "follow : nullableS does not contain ..."
+        let isRestNullable rList =
+            List.fold
+                (fun check elm ->
+                    match elm with
+                    | Term _ | Dollar -> false
+                    | NonTerm pName -> check && isNullable pName 
+                    )
+                true
+                rList
+        let getFirst pName =
+            if firstS.ContainsKey(pName) then firstS.[pName]
+            else failwith "follow : firstS does not contain ..."
+        let add2consts (consts : Dictionary<string,FollowConst list>) n v =
+            if consts.ContainsKey(n) then
+                let oldV = consts.[n]
+                consts.[n] <- v::oldV
+                consts
+            else
+                consts.Add(n,[v])
+                consts
+        let add2unsolved (unsolved : Dictionary<string,FollowConst list>) n v =
+            if unsolved.ContainsKey(n) then unsolved
+            else unsolved.Add(n,v); unsolved
+        let rec constraints_rExp pName consts = function
+            | (NonTerm nt)::(NonTerm ntF)::rExp when isRestNullable ((NonTerm ntF)::rExp) ->
+                let fSet = FirstSet (getFirst ntF)
+                let consts = add2consts consts nt fSet
+                let consts = add2consts consts nt (FollowOf pName)
+                constraints_rExp pName consts ((NonTerm ntF)::rExp)
+            | (NonTerm nt)::(NonTerm ntF)::rExp ->
+                let fSet = FirstSet (getFirst ntF)
+                constraints_rExp pName (add2consts consts nt fSet) ((NonTerm ntF)::rExp)
+            | (NonTerm nt)::(Term t)::rExp ->
+                let fSet = FirstSet [Term t]
+                constraints_rExp pName (add2consts consts nt fSet) rExp
+            | (NonTerm nt)::ProdExp.Dollar::rExp ->
+                let fSet = FirstSet [ProdExp.Dollar]
+                constraints_rExp pName (add2consts consts nt fSet) rExp
+            | (NonTerm nt)::rExp when isRestNullable rExp ->
+                add2consts consts nt (FollowOf pName)
+            | [] -> consts
+            | t::rExp -> constraints_rExp pName consts rExp
+        let constraints_rSide (constraints) (prod : KeyValuePair<string,(ProdExp list) list>) =
+            List.fold
+                (constraints_rExp prod.Key)
+                constraints
+                prod.Value
+        let constraints =
+            Dict<string,(ProdExp list) list>.fold
+                constraints_rSide
+                (new Dictionary<string,FollowConst list>())
+                newGrammar
+        let solveDependencies (consts : Dictionary<string,FollowConst list>) =
+            (*
+             * Add first from constraints to solved. When adding use a bool to check if new elements are added
+             * Then iterate adding followSets until no new elements are added for the whole constraintSet
+             * *)
+            let (solved,newConsts) =
+                Dict<string,FollowConst list>.fold
+                    (fun (solvedFirst,newConsts) prod ->
+                        let newConstSet =
+                            List.fold
+                                (fun newConsts cons ->
+                                    match cons with
+                                    | FirstSet set ->
+                                        let add2new = add2solved solvedFirst prod.Key set
+                                        newConsts
+                                    | _ -> cons::newConsts
+                                    )
+                                []
+                                prod.Value
+                        if List.length newConstSet > 0 then
+                            (solvedFirst,add2unsolved newConsts prod.Key newConstSet)
+                        else
+                            (solvedFirst,newConsts)
+                        )
+                    (new Dictionary<string,HashSet<ProdExp>>(),new Dictionary<string,FollowConst list>())
+                    consts
+            let rec fixpointIter (solved : Dictionary<string,HashSet<ProdExp>>) =
+                let newAdded =
+                    Dict<string,FollowConst list>.fold
+                        (fun newAdded prod ->
+                            List.fold
+                                (fun newAdded cons ->
+                                    match cons with
+                                    | FollowOf pName when solved.ContainsKey(pName) ->
+                                        let (nAdded,_) = addSet2solved solved prod.Key solved.[pName]
+                                        nAdded
+                                    | _ -> newAdded
+                                    )
+                                newAdded
+                                prod.Value
+                            )
+                        false
+                        newConsts
+                if newAdded then fixpointIter solved
+                else solved
+            fixpointIter solved
+        solveDependencies constraints

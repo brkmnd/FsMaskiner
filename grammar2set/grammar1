@@ -1,0 +1,7 @@
+prod A -> "a" "b" A
+prod A -> B
+prod B -> C |
+prod C -> "c" D
+prod D -> E F | F
+prod E -> "e" E
+prod F -> "f"

@@ -1,0 +1,8 @@
+prod N  -> A B
+prod N  -> B A
+prod A  -> "a"
+prod A  -> C A C
+prod B  -> "b"
+prod B  -> C B C
+prod C  -> "a"
+prod C  -> "b"

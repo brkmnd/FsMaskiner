@@ -1,0 +1,4 @@
+prod S  -> A "a"
+prod A  -> B D
+prod B  -> "b" |
+prod D  -> "d" prod D ->

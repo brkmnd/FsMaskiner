@@ -1,0 +1,7 @@
+
+    prod Prod       -> "prod" "nonTerm" "->" ProdRight
+    prod ProdRight  -> RightSide ProdRight'
+    prod ProdRight' -> Prod | 
+    prod RightSide  -> RightExp RightSide'
+    prod RightSide' -> "|" RightSide  |  
+    prod RightExp   -> "nonTerm" RightExp | "term" RightExp |   
