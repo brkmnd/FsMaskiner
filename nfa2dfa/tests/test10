@@ -1,0 +1,46 @@
+# Exp' -> Exp 
+start (A) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(B)
+((B))
+
+# Exp -> Exp imp Exp
+(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(D)
+(D) -imp>(E)
+(E) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(F)
+((F))
+
+# Exp -> Exp biimp Exp
+(G) -eps>(C) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(H)
+(H) -biimp>(I)
+(I) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(J)
+((J))
+
+# Exp -> Exp or Exp
+(K) -eps>(C) -eps>(G) -eps>(O) -eps>(S) -eps>(V) -Exp>(L)
+(L) -or>(M)
+(M) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(N)
+((N))
+
+# Exp -> Exp and Exp
+(O) -eps>(C) -eps>(G) -eps>(K) -eps>(S) -eps>(V) -Exp>(P)
+(P) -and>(Q)
+(Q) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(R)
+((R))
+
+# Exp -> not Exp
+(S) -not>(T)
+(T) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(U)
+((U))
+
+# Exp -> Atom
+(V) -eps>(W) -eps>(Z) -Atom>(W)
+((W))
+
+# Atom -> lpar Exp rpar
+(V) -lpar> (W)
+(W) -eps>(C) -eps>(G) -eps>(K) -eps>(O) -eps>(S) -eps>(V) -Exp>(X) #some more comment
+(X) -rpar>(Y)
+((Y))
+
+# Atom -> atom
+-> (Z) -atom>(Zend)
+((Zend))

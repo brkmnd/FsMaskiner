@@ -8,10 +8,16 @@ let nfa2dfa (name,nfa,echo) =
     let (msg1,_) =
         if msg0 <> "" then (msg0,[||])  
         else
-            try ("",Nfa2Dfa.convert name parsed echo) with
+            try ("",Nfa2Dfa.convert true name parsed echo) with
             | Failure msg -> (msg,[||])
     msg1
 
+let fopen name =
+    let l = System.IO.File.ReadAllLines ("tests/" + name)
+    Array.fold
+        (fun acc line -> acc + line + "\n")
+        ""
+        l
 let printMove (args : string[]) =
     let print =
         if args.[0] <> "_end_" then
@@ -43,69 +49,21 @@ let echo = new Dictionary<string,System.Func<string[],bool>>()
 //echo.Add("move",new System.Func<string[],bool>(printMove))
 echo.Add("dfa",new System.Func<string[],bool>(printDfa))
 
-let eClosureTest1 =
-    "start (1) -eps>(2) -eps>(3)\n"+
-    "(2) -eps>(4) -eps>(5)\n"+
-    "(3) -eps>(5) -eps>(4)\n"+
-    "(4) -a>(6) -b>(6)\n"+
-    "(5) -a>(6) -b>(6)\n"+
-    "((6))\n"
-let status_eClosureTest1 = nfa2dfa("eClosureTest",eClosureTest1,echo)
-printfn "status(test1) : %s" status_eClosureTest1
+let hr = List.fold (fun acc a -> acc + a) "" (List.init 60 (fun i -> "-"))
 
+let printTest fName =
+    printfn "test (%s)" fName
+    let str = fopen fName
+    let status = nfa2dfa(fName,str,echo)
+    printfn "status(%s) = %s" fName status
+    printfn "%s" hr
 
-let fejl_nfa1 =
-    "start(1) -eps>(2)\n"+
-    "(2) -eps>(1)\n"
-let status_fejl1 = nfa2dfa("fejl1",fejl_nfa1,echo)
-printfn "status(fejl1) : %s" status_fejl1
-
-let fejl_nfa2 =
-    "start(1) -eps>(2) -eps>(3)\n"+
-    "(2) -b>(6) -a>(6)\n"+
-    "(3) -a>(2) -eps>(4)\n"+
-    "(4) -a>(4) -b>(4) -eps>(6)\n"+
-    "((6)) -eps>(4)\n"
-let status_fejl2 = nfa2dfa("fejl2",fejl_nfa2,echo)
-printfn "status(fejl2) : %s" status_fejl2
-
-let fejl_nfa3 =
-    "start(1) -eps>(1)\n"
-let status_fejl3 = nfa2dfa("fejl3",fejl_nfa3,echo)
-printfn "status(fejl3) : %s" status_fejl3
-
-let nfa17 =
-    "start(1) -eps>(2) -eps>(4)\n"+
-    "(2) -a>(3)\n"+
-    "(3) -b>(2) -eps>(6)\n"+
-    "(4) -a>(5)\n"+
-    "(5) -eps>(2) -b>(6)\n"+
-    "((6))\n"
-printfn "\nnfa14 to dfa17"
-let status17 = nfa2dfa("nfa17",nfa17,echo)
-
-let nfa16 =
-    "start(1) -eps>(2) -eps>(4)\n"+
-    "# some comment"+
-    "(2) -b>(3)\n"+
-    "(3) -a>(3) -eps>(6)\n"+
-    "(4) -eps>(5) -b>(5)\n"+
-    "(5) -eps>(3) -b>(6) -a>(4)\n"+
-    "((6))\n"
-printfn "nfa16 to dfa16"
-let status16 = nfa2dfa("nfa16",nfa16,echo)
-
-let nfa15 =
-    "start (1) -eps>(2) -eps> (4)\n"+
-    "(2) -a> (3)\n"+
-    "(3) -b>(3) -eps>(6)\n"+
-    "(4) -a>(4) -b>(5)\n"+
-    "(5) -eps>(4) -eps>(6)\n"+
-    "((6))\n"
-printfn "nfa15 to dfa15"
-let status15 = nfa2dfa("nfa15",nfa15,echo)
-
-let nfa_test1 =
-    "start (1) -a>(2) -a>(3)\n"+
-    "(2) -b>(1) -eps>(3)\n"+
-    "((3))\n"
+printTest "test1"
+printTest "test2"
+printTest "test3"
+printTest "test_ex15"
+printTest "test_ex16"
+printTest "test_ex17"
+printTest "test10"
+printTest "test11"
+printTest "test_comm1"

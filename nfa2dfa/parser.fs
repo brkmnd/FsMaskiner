@@ -35,8 +35,8 @@ module NfaParser =
         "start|"+
         "-|>|\\(\\(|\\)\\)|\\(|\\)|"+
         "[a-zA-Z0-9]+|"+
-        "\\n+| "+
-        "#[^\\n]+"
+        "\\n+| |"+
+        "\\#[^\\n]*\\n+"
     (*
      * Lexer
      * Replaces every token with "" in input str.
@@ -45,8 +45,12 @@ module NfaParser =
      * *)
     let lexer str =
         let tokensL = new List<Token>()
+        let isNewline = function
+            | Newline -> true
+            | _ -> false
         let addToken t =
             let l = String.length t
+            let tl = tokensL.Count
             if t = "start" then tokensL.Add(Start)
             elif t = "(" then
                 tokensL.Add(LPar)
@@ -60,9 +64,11 @@ module NfaParser =
                 tokensL.Add(RightPointer)
             elif t = "-" then
                 tokensL.Add(Line)
-                elif t = " " || t.[0] = '#' then ()
             elif l > 0 && t.[0] = '\n' then
                 tokensL.Add(Newline)
+            elif l > 0 && tl > 0 && not (tokensL.[tl - 1]|>isNewline) && t.[0] = '#' then
+                tokensL.Add(Newline)
+            elif l > 0 && (t = " " || t.[0] = '#') then ()
             else
                 tokensL.Add(Name t)
         let mfun (m : Match) =
@@ -148,13 +154,17 @@ module NfaParser =
                     failwith msg
         let len = Array.length tokens
         let tree = new Dictionary<string,Nfa2Dfa.State>()
+        let insert2tree (name,newState) =
+            if tree.ContainsKey(name) then
+                failwith (sprintf "syntax error: duplicate of state def '%s'" name)
+            else
+                tree.Add(name,newState)
+                ()
         let add2tree = function
             | State (startAtt,name) ->
-                tree.Add(name,Nfa2Dfa.newState false startAtt [])
-                ()
+                insert2tree(name,Nfa2Dfa.newState false startAtt [])
             | AcceptingState (startAtt,name) ->
-                tree.Add(name,Nfa2Dfa.newState true startAtt [])
-                ()
+                insert2tree(name,Nfa2Dfa.newState true startAtt [])
             | Transition (targetName,c,destName) ->
                 if not (tree.ContainsKey(targetName)) then
                     let msg =

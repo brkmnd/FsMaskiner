@@ -2,15 +2,15 @@ namespace Maskiner
 open System.Collections.Generic
 open System
 type Main =
-    static member nfa2dfa (name,nfa,echo) =
+    static member nfa2dfa (name,allowClosureCycles,nfa,echo) =
         let nfa = nfa + "\n"
         let (msg0,parsed) =
             try ("",NfaParser.go nfa) with
             | Failure msg -> (msg,new Dictionary<string,Nfa2Dfa.State>())
         let (msg1,_) =
-            if msg0 <> "" then (msg0,[||])  
+            if msg0 <> "" then (msg0,[||])
             else
-                try ("",Nfa2Dfa.convert name parsed echo) with
+                try ("",Nfa2Dfa.convert allowClosureCycles name parsed echo) with
                 | Failure msg -> (msg,[||])
         msg1
     static member grammar2set (inStr,echoes : Dictionary<string,Func<string [],bool>>) =

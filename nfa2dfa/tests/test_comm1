@@ -1,0 +1,7 @@
+#comment1
+#comment2
+#comment3 comment3 æøå
+start (1) -eps>(2) #comment4
+          #comment5
+((2)) -eps>(1)
+#comment6
