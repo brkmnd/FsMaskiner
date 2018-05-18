@@ -1,6 +1,6 @@
 open Maskiner
 open PropParser
-open PropEval
+open Prop2Table
 open System.Collections.Generic
 let fopen name =
     let l = System.IO.File.ReadAllLines ("tests/" + name)
@@ -27,7 +27,7 @@ let echoAtom args =
         true
     else true
 let echoes = new Dictionary<string,System.Func<string [],bool>>()
-echoes.Add("situation",new System.Func<string [],bool>(echoSit))
+echoes.Add("model",new System.Func<string [],bool>(echoSit))
 echoes.Add("atom",new System.Func<string [],bool>(echoAtom))
 let printTest fName =
     resstr <- ""
