@@ -124,80 +124,42 @@ module Nfa2Dfa =
             true
             states0
             states1
-    (*
-     * Calculate eClosure on a set of states.
-     * Stop if circular eClosure is reached, ex. (1) -e> (2) -e> (1) -e> ...
+    (* Calculate eClosure on a set of states.
      * Stop if trying to calculate eTransition to a state that does not exist
      * The resulting eClosure is a SortedDictionary<string,State>
      * Sorted since comparison of two closures is then in O(n)
      * *)
-    let eClosure allowCycles states (nfa : Dictionary<string,State>) =
-        let testForCycles path curChar =
-            // since curChar is not included in 
-            // path, i is the number of elms from
-            // curChar to first match
-            let len = List.length path
-            let (found,i) =
-                List.fold
-                    (fun (b,i) x ->
-                        if b || x = curChar then (true,i)
-                        else (b,i + 1)
-                        )
-                    (false,0)
-                    path
-            if found && i = 0 then true
-            elif found && len >= i * 2 + 1 then
-                let upTilFound = path.[0 .. i - 1]
-                let fromFound = path.[i + 1 .. i * 2]
-                upTilFound = fromFound
-            else false
-        let rec getCycle acc curChar = function
-            | x::eClosure when x = curChar -> acc
-            | x::eClosure -> getCycle (acc + " " + x) curChar eClosure
-            | [] -> acc
-        let rec calc_eClosurePath (newClosure0 : SortedDictionary<string,State>) path0 transitions =
-            (* Accumulate on path, if any transition destination
-             * is reached already in the path, and if elms from acc-head
-             * down to last inserted copy of destination matches elms from
-             * copy and onwards, circular eClosure is present, and the program
-             * terminates. This can be described as x,d1,...,dn,x,d1,...dn
-             * where x is current destination and n >= 0. Otherwise keep
-             * following eTransitions to end and add those to newClosure
-             * *)
+    let eClosure states (nfa : Dictionary<string,State>) =
+        let rec calc_eClosurePath (newClosure0 : SortedDictionary<string,State>) transitions =
             List.fold
-                (fun (path,newClosure) transition ->
+                (fun (newClosure : SortedDictionary<string,State>) transition ->
                     match transition with
                     | Epsilon destName when not (nfa.ContainsKey(destName)) ->
                         failwith
                             ("trying to calc eClosure to state that does "+
                             "not exist")
-                    | Epsilon destName when not allowCycles && testForCycles path destName ->
-                        failwith
-                            "circular/infinite epsilon transition detected"
-                    | Epsilon destName when allowCycles && List.exists (fun x -> x = destName) path ->
-                        (path,newClosure)
+                    | Epsilon destName when newClosure.ContainsKey (destName)->
+                        newClosure
                     | Epsilon destName ->
                         let destState = nfa.[destName]
                         calc_eClosurePath
                             (add2closure newClosure destName destState)
-                            (destName::path)
                             destState.transitions
-                    | _ -> (path,newClosure)
+                    | _ -> newClosure
                     )
-                (path0,newClosure0)
+                newClosure0
                 transitions
         SortedDict<string,State>.fold
             (* fold ingoing stateset. Foreach follow any outgoing eTransition to the end
              * Return the newClosure
              * *)
             (fun newClosure state0 ->
-                let (_,newClosure) = calc_eClosurePath newClosure [] state0.Value.transitions
+                let newClosure = calc_eClosurePath newClosure state0.Value.transitions
                 add2closure newClosure state0.Key state0.Value
                 )
             (new SortedDictionary<string,State>())
             states
-    (*
-     * Move on some char c.
+    (* Move on some char c.
      * If two transitions leave the same state and
      * target the same state, only one is recorded.
      * *)
@@ -213,17 +175,16 @@ module Nfa2Dfa =
             (fun (acc : SortedDictionary<string,State>) s0 -> moveState acc s0.Value.transitions)
             (new SortedDictionary<string,State>())
             states
-    (*
-     * Moves on every letter/char in the alphabet
+    (* Moves on every letter/char in the alphabet
      * Every move is send to echoMove
      * The resulting set is [(string * SortedDictionary<string,State> * Dictionary<string,strint>)]
      * that is an array of stateName * eClosure * transitions
      * *)
-    let moveWithAlpha allowClosureCycles acc0 (curStateName,curState,curStateTransitions : Dictionary<string,string>) nfa echoes alphabet =
+    let moveWithAlpha acc0 (curStateName,curState,curStateTransitions : Dictionary<string,string>) nfa echoes alphabet =
         List.fold
             (fun acc c ->
                 let moveOnCurWithChar = move curState c nfa
-                let eClosureAfterMove = eClosure allowClosureCycles moveOnCurWithChar nfa
+                let eClosureAfterMove = eClosure moveOnCurWithChar nfa
                 //Check if calced e-closure is already present as a state
                 let (check,newStateName) =
                     let newName0 = sprintf "s%d" (Array.length acc)
@@ -279,7 +240,7 @@ module Nfa2Dfa =
      * The result is an array of dfaStateName * eClosure * transitions.
      * The result is send to echoDfa and then returned
      * *)
-    let convert allowClosureCycles nfaName nfa echoes =
+    let convert nfaName nfa echoes =
         //Obtain every state with start = true in the nfa
         let startStates =
             Dict.fold
@@ -318,7 +279,6 @@ module Nfa2Dfa =
         let rec exec states (curStateName,curState,curStateTransitions) i =
             let moves =
                 moveWithAlpha
-                    allowClosureCycles
                     states
                     (curStateName,curState,curStateTransitions)
                     nfa
@@ -329,7 +289,7 @@ module Nfa2Dfa =
             else states
         let t0 =
             let name0 = "s0"
-            let eClosure0 = eClosure allowClosureCycles startStates nfa
+            let eClosure0 = eClosure startStates nfa
             let echoSet = echoSet echoes name0 eClosure0
             (name0,eClosure0,new Dictionary<string,string>())
         let resDfa = exec [|t0|] t0 1

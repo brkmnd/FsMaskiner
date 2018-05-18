@@ -2,7 +2,22 @@ namespace Maskiner
 open System.Collections.Generic
 open System
 type Main =
-    static member nfa2dfa (name,allowClosureCycles,nfa,echo) =
+    static member prop2table (input,statusF : Func<int,string>,echoes) =
+        let ((vtab,tree),status0) =
+            try (PropParser.parse input,"") with
+             | Failure msg ->
+                 (([],PropParser.EmptyTree),msg)
+        let (_,status1) =
+            match (tree,statusF.Invoke(List.length vtab)) with
+            | (PropParser.EmptyTree,_) -> ([||],status0)
+            | (_,"") ->
+                try (Prop2Table.eval vtab tree echoes,status0) with
+                | Failure msg ->
+                    ([||],msg)
+            | (_,msg) ->
+                ([||],msg)
+        status1
+    static member nfa2dfa (name,nfa,echo) =
         let nfa = nfa + "\n"
         let (msg0,parsed) =
             try ("",NfaParser.go nfa) with
@@ -10,7 +25,7 @@ type Main =
         let (msg1,_) =
             if msg0 <> "" then (msg0,[||])
             else
-                try ("",Nfa2Dfa.convert allowClosureCycles name parsed echo) with
+                try ("",Nfa2Dfa.convert name parsed echo) with
                 | Failure msg -> (msg,[||])
         msg1
     static member grammar2set (inStr,echoes : Dictionary<string,Func<string [],bool>>) =
