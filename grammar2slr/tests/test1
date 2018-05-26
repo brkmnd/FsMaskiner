@@ -1,0 +1,16 @@
+prod Exp  -> Exp "plus" Exp
+prod Exp  -> Exp "minus" Exp
+prod Exp  -> Exp "times" Exp
+prod Exp  -> Exp "divide" Exp
+prod Exp  -> Exp "power" Exp
+prod Exp  -> Call
+prod Exp  -> Atom
+prod Exp  -> "minus" Exp
+prod Call -> "id" "lpar" Args "rpar"
+prod Args -> Arg
+prod Args -> Arg "comma" Args
+prod Arg  -> Atom
+prod Arg  -> Call
+prod Atom -> "lpar" Exp "rpar"
+prod Atom -> "float"
+prod Atom -> "int"

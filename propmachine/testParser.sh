@@ -1,1 +1,1 @@
-fsharpi parser.fs testParser.fsx
+fsharpi propparser.fs testParser.fsx

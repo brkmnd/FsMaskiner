@@ -9,16 +9,16 @@ let fopen name =
         l
 let set2str (set) =
     let retstr =
-        Set<Grammar2Set.ProdExp>.fold
+        Set<GrammarParser.ProdExp>.fold
             (fun acc e ->
                 match e with
-                | Grammar2Set.Term t ->
+                | GrammarParser.Term t ->
                     let t =
                         if t = "{" || t = "}" then
                             "'" + t + "'"
                         else t
                     acc + "," + t
-                | Grammar2Set.Dollar -> acc + ",$"
+                | GrammarParser.Dollar -> acc + ",$"
                 | _ -> acc
                 )
             ""

@@ -2,6 +2,9 @@ namespace Maskiner
 open System.Collections.Generic
 open System
 type Main =
+    static member comcalc (input,ftab) =
+        try ("",ComCalc.eval input ftab) with
+        | Failure msg -> (msg,0.0)
     static member prop2table (input,statusF : Func<int,string>,echoes) =
         let ((vtab,tree),status0) =
             try (PropParser.parse input,"") with
@@ -33,19 +36,19 @@ type Main =
         let firstName = "first"
         let followName = "follow"
         let errorName = "error"
-        let emptyDict = new Dictionary<string,HashSet<Grammar2Set.ProdExp>>()
+        let emptyDict = new Dictionary<string,HashSet<GrammarParser.ProdExp>>()
         let set2str set =
             let retstr =
-                Set<Grammar2Set.ProdExp>.fold
+                Set<GrammarParser.ProdExp>.fold
                     (fun acc e ->
                         match e with
-                        | Grammar2Set.Term t ->
+                        | GrammarParser.Term t ->
                             let t =
                                 if t = "{" || t = "}" || t = "," then
                                     "'" + t + "'"
                                 else t
                             acc + "," + t
-                        | Grammar2Set.Dollar -> acc + ",$"
+                        | GrammarParser.Dollar -> acc + ",$"
                         | _ -> acc
                         )
                     ""
@@ -70,7 +73,7 @@ type Main =
                     )
                 true
                 pOrder
-        let printFirst (first : Dictionary<string,HashSet<Grammar2Set.ProdExp>>) pOrder =
+        let printFirst (first : Dictionary<string,HashSet<GrammarParser.ProdExp>>) pOrder =
             let printF = echoes.[firstName]
             List.fold
                 (fun acc pName ->
@@ -79,7 +82,7 @@ type Main =
                     )
                 true
                 pOrder
-        let printFollow (follow : Dictionary<string,HashSet<Grammar2Set.ProdExp>>) pOrder =
+        let printFollow (follow : Dictionary<string,HashSet<GrammarParser.ProdExp>>) pOrder =
             let printF = echoes.[followName]
             List.fold
                 (fun acc pName ->
@@ -121,7 +124,7 @@ type Main =
         let ((grammarTree,pOrder),emsg0) =
             try ((GrammarParser.parseGrammar inStr),"") with
             | Failure msg ->
-                let emptyTree = new Dictionary<string,(Grammar2Set.ProdExp list) list>()
+                let emptyTree = new Dictionary<string,(GrammarParser.ProdExp list) list>()
                 ((emptyTree,[]),msg)
         if emsg0 <> "" then
             printError "parser" emsg0

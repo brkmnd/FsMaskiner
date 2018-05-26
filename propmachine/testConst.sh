@@ -1,1 +1,1 @@
-fsharpi ../data-struct.fs parser.fs eval_table.fs testConst.fsx
+fsharpi ../data-struct.fs propparser.fs prop2table.fs testConst.fsx
