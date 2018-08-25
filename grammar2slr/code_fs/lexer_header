@@ -1,0 +1,2 @@
+    let lexer inStr =
+        let tokensL = new List<string * Option<string>>()

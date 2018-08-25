@@ -1,0 +1,35 @@
+prec "minus" 1
+prec "plus" 1
+prec "times" 2
+prec "divide" 2
+prec "power" 3
+
+group "operator" {"minus","plus","divide"}
+group "operand" {"int","float","id"}
+group "parentheses" {"lpar","rpar"}
+
+token -cap "int", "float", "id" as "[0-9]+", "[0-9]*.[0-9]+", "[a-zA-Z]+"
+token "plus", "minus", "times", "divide", "power" as "\\+", "-", "\\*", "/", "\\^"
+token "lpar", "rpar", "comma" as "(", ")", ","
+!token "\n","\r","\t"," "
+
+assoc "right" : "power"
+assoc "left" : "minus","plus","divide","times"
+
+prod Exp' -> Exp
+prod Exp  -> Exp "plus" Exp | Exp "minus" Exp
+prod Exp  -> Exp "times" Exp
+prod Exp  -> Exp "divide" Exp
+prod Exp  -> Exp "power" Exp
+prod Exp  -> Call
+prod Exp  -> Atom
+prod Exp  -> "minus" Exp
+prod Call -> "id" "lpar" Args "rpar"
+prod Args -> Arg
+prod Args -> Arg "comma" Args
+prod Arg  -> Exp
+prod Arg  -> Call
+prod Arg  ->
+prod Atom -> "lpar" Exp "rpar"
+prod Atom -> "float"
+prod Atom -> "int"

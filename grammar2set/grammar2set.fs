@@ -195,6 +195,9 @@ module Grammar2Set =
                 (TermSymbol t)::initSet
             | Dollar::rExp ->
                 initIter_exps initSet rExp
+            //undefined
+            | Delim::rExp ->
+                initIter_exps initSet rExp
             | [] -> initSet
         let initIter_rSide =
             List.fold
@@ -231,7 +234,7 @@ module Grammar2Set =
                         )
                     (new Dictionary<string,HashSet<ProdExp>>(),new Dictionary<string,First list>())
                     unsolved
-            let rec fixpointIter (solved : Dictionary<string,HashSet<ProdExp>>) =
+            let rec fixpointIter (solved : Dictionary<string,HashSet<ProdExp>>) lastSolvedCount =
                 let newAdded =
                     Dict<string,First list>.fold
                         (fun newAdded prod ->
@@ -252,9 +255,11 @@ module Grammar2Set =
                             )
                         false
                         newUnsolved
-                if newAdded then fixpointIter solved
+                if newAdded then fixpointIter solved lastSolvedCount
+                elif solved.Count > lastSolvedCount && solved.Count <> grammar.Count then
+                    fixpointIter solved solved.Count
                 else solved
-            fixpointIter solved
+            fixpointIter solved 0
         solveDependencies initIter
     (* Calc Follow
      * The alg. used is a fixpoint one described above some of the functions
@@ -276,8 +281,9 @@ module Grammar2Set =
             List.fold
                 (fun check elm ->
                     match elm with
+                    | NonTerm pName -> check && isNullable pName
                     | Term _ | Dollar -> false
-                    | NonTerm pName -> check && isNullable pName 
+                    | Delim -> false
                     )
                 true
                 rList
@@ -302,6 +308,8 @@ module Grammar2Set =
             | Dollar::rest ->
                 let add2 = fSet.Add(Dollar)
                 fSet
+            //undefined
+            | Delim::rest -> getFirstOfRest fSet rest
             | [] -> fSet
         let createFirstSetFromSingle v =
             let retval = new HashSet<ProdExp>()
@@ -423,7 +431,7 @@ module Grammar2Set =
             // Then iterate adding followSets until
             // no new elements are added. Iterate over
             // the whole constraints-set
-            let rec fixpointIter (solved : Dictionary<string,HashSet<ProdExp>>) =
+            let rec fixpointIter (solved : Dictionary<string,HashSet<ProdExp>>) lastSolvedCount =
                 let newAdded =
                     Dict<string,FollowConst list>.fold
                         (fun newAdded prod ->
@@ -444,7 +452,9 @@ module Grammar2Set =
                             )
                         false
                         newConsts
-                if newAdded then fixpointIter solved
+                if newAdded then fixpointIter solved lastSolvedCount
+                elif solved.Count > lastSolvedCount && solved.Count <> grammar.Count then
+                    fixpointIter solved solved.Count
                 else solved
-            fixpointIter solved
+            fixpointIter solved 0
         solveDependencies constraints

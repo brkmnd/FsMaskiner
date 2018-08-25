@@ -1,0 +1,4 @@
+    (* Initialize tree stack.
+     * This is passed on to the production_funs as tree
+     * *)
+    let initTreeStack = [EmptyTree]

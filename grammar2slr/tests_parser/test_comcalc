@@ -1,0 +1,36 @@
+prec "minus" 1
+prec "plus" 1
+prec "times" 2
+prec "divide" 2
+prec "power" 3
+
+token "int" as "[0-9]+"
+token "minus" as "-"
+token "plus"
+!token "\n","\r","\t"," "
+
+group "operators" {"minus","plus","divide"}
+
+assoc "minus" left
+assoc "plus" left
+assoc "divide" left
+assoc "times" left
+assoc "power" left
+
+prod Exp' -> Exp
+prod Exp  -> Exp "plus" Exp | Exp "minus" Exp
+prod Exp  -> Exp "times" Exp
+prod Exp  -> Exp "divide" Exp
+prod Exp  -> Exp "power" Exp
+prod Exp  -> Call
+prod Exp  -> Atom
+prod Exp  -> "minus" Exp
+prod Call -> "id" "lpar" Args "rpar"
+prod Args -> Arg
+prod Args -> Arg "comma" Args
+prod Arg  -> Atom
+prod Arg  -> Call
+prod Arg  ->
+prod Atom -> "lpar" Exp "rpar"
+prod Atom -> "float"
+prod Atom -> "int"

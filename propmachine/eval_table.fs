@@ -96,7 +96,8 @@ module Prop2Table =
         | NodeTwo (Biimp,exp0,exp1) ->
             let v0 = evalTree model echoes exp0
             let v1 = evalTree model echoes exp1
-            let res = ((not v0) || v1) && ((not v1) || v0)
+            //let res = ((not v0) || v1) && ((not v1) || v0)
+            let res = v0 = v1
             let echo =
                 echoExpDouble
                     [|"biimp";v0|>bval;v1|>bval;res|>bval|]

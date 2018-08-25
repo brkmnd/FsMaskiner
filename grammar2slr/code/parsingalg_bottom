@@ -1,0 +1,27 @@
+        let rec exec (i,a) sStack tree =
+            let (s,_) = popOne sStack
+            match actionTable.[s].[token2lookup a] with
+            | Shift t ->
+                let newStack = t::sStack
+                let newTree = addAtom2tree tree a
+                let (i,a) = getNextFromInput i
+                exec (i,a) newStack newTree
+            | Reduce r ->
+                let (prod,rSide,prodF) =
+                    let (a,b) = productions_str.[r]
+                    let f = productions_fun.[r]
+                    (a,b,f)
+                let newTree = prodF tree
+                let betaLen = Array.length rSide
+                let (_,newStack) = popN betaLen sStack
+                let (t,_) = popOne newStack
+                let newStack = pushGoto newStack gotoTable.[t].[prod]
+                exec (i,a) newStack newTree
+            | Accept -> tree
+            | Error msg ->
+                failwith (sprintf "syntax error: %s" msg)
+        exec (0,tokens.[0]) [0] [initTreeStack]
+    let parse str =
+        let lexed = lexer str
+        let parsed = parser lexed
+        parsed

@@ -2,7 +2,7 @@ open Maskiner
 open MathParser
 open System.Collections.Generic
 let fopen name =
-    let l = System.IO.File.ReadAllLines ("tests_parser/" + name)
+    let l = System.IO.File.ReadAllLines (name)
     Array.fold
         (fun acc line -> acc + line + "\n")
         ""
@@ -54,6 +54,9 @@ let piF (args : float[]) =
     else
         let arg = args.[0]
         System.Math.Pow(System.Math.PI,arg)
+let testF (args : float[]) =
+    printfn "%f,%f,%f,%f" args.[0] args.[1] args.[2] args.[3]
+    args.[0] - args.[1] - args.[2] - args.[3]
 let newFunc (f : float[] -> float) =
     new System.Func<float[],float>(f)
 let ftab = new Dictionary<string,int[] * System.Func<float[],float>>()
@@ -64,6 +67,7 @@ ftab.Add("pi",([|0;1|],newFunc piF))
 ftab.Add("factorial",([|1|],newFunc factF))
 ftab.Add("binomial",([|2|],newFunc binomF))
 ftab.Add("dpmf.binomial",([|3|],newFunc dpmf_binomF))
+ftab.Add("fun",([|4|],newFunc testF))
 let printTest fName =
     printfn "test (%s)" fName
     let input = fopen fName
@@ -79,6 +83,14 @@ let printTest fName =
     printfn "tree: %A" tree
     printfn ""
 
+printTest "tests_calc/test1"
+printTest "tests_calc/test2"
+printTest "tests_calc/test3"
+printTest "tests_calc/test4"
+printTest "tests_calc/test5"
+printTest "tests_calc/test6"
+printTest "tests_calc/ftest1"
+(*
 printTest "test1"
 printTest "test2"
 printTest "test3"
@@ -105,3 +117,4 @@ printTest "syntax_error/test6"
 printTest "syntax_error/test7"
 printTest "syntax_error/test8"
 printTest "syntax_error/test9"
+*)

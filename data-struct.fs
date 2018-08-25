@@ -29,6 +29,8 @@ type Dict<'T0,'T1> =
                 exec (f acc elm.Current)
             else acc
         exec acc0
+    static member fold_cs<'T2> (f : System.Func<'T2,KeyValuePair<'T0,'T1>,'T2>,acc0,d : Dictionary<'T0,'T1>) =
+        Dict<'T0,'T1>.fold (fun acc x -> f.Invoke(acc,x)) acc0 d
 type Set<'T> =
     static member fold f acc0 (s : HashSet<'T>) =
         let mutable elm = s.GetEnumerator()

@@ -1,0 +1,33 @@
+token -cap "string", "identifiers", "num" as "\g[^\g]*\g", "[A-Z][a-zA-Z']*", "test"
+token "bang" as "!"
+token "rarrow" as "->"
+token "lbrace" as "\\{"
+token "rbrace" as "\\}"
+token "comma" as ","
+token as ":"
+token "mid" as "\\|"
+token "flag_cap" as "-cap"
+!token "[\\n\\t\\r ]+", "#[^\\n]*\\n" 
+
+group "definition" {"prod","prec","assoc","group"}
+
+prod Exp         -> "prod" Identifier "rarrow" ProdRight Exp
+prod Exp         -> "prec" String Num Exp
+prod Exp         -> "assoc" String "colon" StringTuple Exp
+prod Exp         -> "token" Token Exp
+prod Exp         -> "bang" "token" BangToken Exp
+prod Exp         -> "group" Group Exp
+prod Exp         ->
+prod ProdRight   -> String ProdRight
+prod ProdRight   -> Identifier ProdRight
+prod ProdRight   -> "mid" ProdRight
+prod ProdRight   ->
+prod Token       -> StringTuple "as" StringTuple
+prod Token       -> "flag_cap" StringTuple "as" StringTuple
+prod BangToken   -> StringTuple
+prod Group       -> String "lbrace" StringTuple "rbrace"
+prod Identifier  -> "identifier"
+prod StringTuple -> String "comma" StringTuple
+prod StringTuple -> String
+prod String      -> "string"
+prod Num         -> "num"

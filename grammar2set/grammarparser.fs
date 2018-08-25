@@ -15,6 +15,7 @@ module GrammarParser =
     type ProdExp =
         | NonTerm of string
         | Term of string
+        | Delim
         | Dollar
     let lexer str =
         let tokensL = new List<Token>()

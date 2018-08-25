@@ -1,0 +1,24 @@
+prod Exp            -> "prod" Identifier "rarrow" ProdRight Exp
+prod Exp            -> "prec" String Num Exp
+prod Exp            -> "assoc" String "colon" StringTuple Exp
+prod Exp            -> "token" Token Exp
+prod Exp            -> "bang" "token" BangToken Exp
+prod Exp            -> "tgroup" Group Exp
+prod Exp            ->
+prod ProdRight      -> String ProdRight
+prod ProdRight      -> Identifier ProdRight
+prod ProdRight      -> "mid" ProdRight
+prod ProdRight      ->
+prod Token          -> StringTuple "as" StringTuple
+prod Token          -> "f_cap" StringTuple "as" StringTuple
+prod BangToken      -> StringTuple
+
+#prod Emsg          -> "f_exp" Group
+#prod Emsg          -> "f_uexp" Group
+
+prod Group          -> String "lbrace" StringTuple "rbrace"
+prod Identifier     -> "identifier"
+prod StringTuple    -> String "comma" StringTuple
+prod StringTuple    -> String
+prod String         -> "string"
+prod Num            -> "num"

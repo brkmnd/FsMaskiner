@@ -1,0 +1,9 @@
+        let mfun (m : Match) =
+            addToken m.Groups
+            ""
+        let residueStr = Regex.Replace(inStr,regToken,mfun)
+        if residueStr <> "" then
+            failwith (sprintf "garbage in expression: %c" residueStr.[0])
+        else
+            tokensL.Add("$",None)
+            Array.init tokensL.Count (fun i -> tokensL.[i])

@@ -1,0 +1,3 @@
+    let addLeaf2tree tree node =
+        match node with
+        | _ -> tree

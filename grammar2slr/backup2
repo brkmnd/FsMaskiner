@@ -1,0 +1,303 @@
+
+    type Tree =
+        | EmptyTree
+        | LeafStr of string
+        | LeafId of string
+        | LeafNum of string
+        | LeafDir of string
+        | RSide of GrammarParser.ProdExp list
+        | TokenAtt of Tree list
+        | TupleArgs of Tree list
+        | DataProds of Dictionary<string,(GrammarParser.ProdExp list) list>
+        | DataTokens of Dictionary<string,string>
+        | DataBTokens of List<string>
+        | DataPrecs of Dictionary<string,int>
+        | DataAssocs of Dictionary<string,string>
+        | DataGroups of Dictionary<string,string list>
+    (* Add leaf nodes/tokens here.
+     * That is nodes of type token
+     * that is to be leafs in the tree
+     * *)
+    let addLeaf2tree tree node =
+        match node with
+        | ("string",Some str) -> (LeafStr str)::tree
+        | ("identifier",Some id) -> (LeafId id)::tree
+        | ("num",Some n) -> (LeafNum n)::tree
+        | _ -> tree
+    let data_productions = new Dictionary<string,(GrammarParser.ProdExp list) list>()
+    let data_tokens = new Dictionary<string,string>()
+    let data_btokens = new List<string>()
+    let data_assoc = new Dictionary<string,string>()
+    let data_prec = new Dictionary<string,int>()
+    let data_groups = new Dictionary<string,string list>()
+    (* Initialize tree stack.
+     * This is passed on to the production_funs as tree
+     * *)
+    let initTreeStack = [
+        (DataProds data_productions)
+        (DataTokens data_tokens)
+        (DataBTokens data_btokens)
+        (DataPrecs data_prec)
+        (DataAssocs data_assoc)
+        (DataGroups data_groups)
+        ]
+    let data_add2prods pName rSide =
+        let dContains = data_productions.ContainsKey(pName)
+        let newRSide =
+            let d0 =
+                if dContains then
+                    []::data_productions.[pName]
+                else [[]]
+            List.fold
+                (fun acc x ->
+                    let head = List.head acc
+                    let tail = List.tail acc
+                    match x with
+                    | GrammarParser.Delim -> []::head::tail
+                    | t -> (head @ [t])::tail
+                    )
+                d0
+                rSide
+        if dContains then
+            data_productions.[pName] <- newRSide
+        else
+            data_productions.Add(pName,newRSide)
+    let data_add2prec tName lev =
+        if data_prec.ContainsKey(tName) then ()
+        else
+            data_prec.Add(tName,(int) lev)
+    let data_add2tokens tName tVal =
+        if data_tokens.ContainsKey(tName) then ()
+        else
+            data_tokens.Add(tName,tVal)
+    let data_add2assoc dir args =
+        List.fold
+            (fun uAcc x ->
+                match x with
+                | LeafStr tName ->
+                    if data_assoc.ContainsKey(tName) then
+                        uAcc
+                    else
+                        data_assoc.Add(tName,dir)
+                | _ -> uAcc
+                )
+            ()
+            args
+    let data_add2groups gName gElms =
+        let createElms () =
+            List.fold
+                (fun acc x ->
+                    match x with
+                    | LeafStr gelm -> gelm::acc
+                    | _ -> acc
+                    )
+                []
+                gElms
+        if data_groups.ContainsKey(gName) then ()
+        else
+            data_groups.Add(gName,createElms())
+    let data_add2btokens args =
+        List.fold
+            (fun u x ->
+                match x with
+                | LeafStr btoken -> data_btokens.Add(btoken); u
+                | _ -> u
+                )
+            ()
+            args
+    (* Add handling of productions here.
+     * That is insert into tree or outside
+     * data-structures.
+     * *)
+    let productions_fun = [|
+        //[0] __ -> Exp 
+        (fun tree pOrder -> (tree,pOrder))
+        //[1] Exp -> prod Identifier rarrow ProdRight Exp 
+        (fun tree pOrder ->
+            match tree with
+            | (RSide rSide)::(LeafId pName)::tree ->
+                data_add2prods pName rSide
+                let newProdOrder =
+                    if List.exists (fun x -> x = pName) pOrder then pOrder
+                    else pName::pOrder
+                (tree,newProdOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[2] Exp -> prec String Num Exp 
+        (fun tree pOrder ->
+            match tree with
+            | (LeafNum n)::(LeafStr token)::tree ->
+                data_add2prec token n
+                (tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[3] Exp -> assoc String direction Exp 
+        //[3] Exp -> assoc String StringTuple Exp 
+        (fun tree pOrder ->
+            match tree with
+            | (TupleArgs args)::(LeafStr dir)::tree ->
+                data_add2assoc dir args
+                (tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[4] Exp -> token Token Exp 
+        (fun tree pOrder ->
+            match tree with
+            | (TokenAtt [LeafStr tName;LeafStr tVal])::tree ->
+                data_add2tokens tName tVal
+                (tree,pOrder)
+            | (TokenAtt [LeafStr tName])::tree ->
+                data_add2tokens tName ""
+                (tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[5] Exp -> bang token BangToken Exp 
+        (fun tree pOrder -> (tree,pOrder))
+        //[6] Exp -> group Group Exp 
+        (fun tree pOrder -> (tree,pOrder))
+        //[7] Exp -> 
+        (fun tree pOrder ->
+            match tree with
+            | _ -> (tree,pOrder)
+            )
+        //[8] ProdRight -> String ProdRight 
+        (fun tree pOrder ->
+            match tree with
+            | (RSide rSide)::(LeafStr term)::tree ->
+                ((RSide ((GrammarParser.Term term)::rSide))::tree,pOrder)
+            | (LeafStr term)::tree -> ((RSide [GrammarParser.Term term])::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[9] ProdRight -> Identifier ProdRight 
+        (fun tree pOrder ->
+            match tree with
+            | (RSide rSide)::(LeafId nt)::tree ->
+                ((RSide ((GrammarParser.NonTerm nt)::rSide))::tree,pOrder)
+            | (LeafId nt)::tree -> ((RSide [GrammarParser.NonTerm nt])::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[10] ProdRight -> mid ProdRight 
+        (fun tree pOrder ->
+            match tree with
+            | (RSide rSide)::tree ->
+                ((RSide (GrammarParser.Delim::rSide))::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[11] ProdRight -> 
+        (fun tree pOrder -> ((RSide [])::tree,pOrder))
+        //[12] Token -> String as String 
+        (fun tree pOrder ->
+            match tree with
+            | tVal::tName::tree ->
+                ((TokenAtt [tName;tVal])::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[13] Token -> String 
+        (fun tree pOrder ->
+            match tree with
+            | tName::tree ->
+                ((TokenAtt [tName])::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[14] BangToken -> StringTuple 
+        (fun tree pOrder ->
+            match tree with
+            | (TupleArgs args)::tree ->
+                data_add2btokens args
+                (tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[15] Group -> String lbrace StringTuple rbrace 
+        (fun tree pOrder ->
+            match tree with
+            | (TupleArgs gElms)::(LeafStr gName)::tree ->
+                data_add2groups gName gElms
+                (tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[16] Identifier -> identifier 
+        (fun tree pOrder -> (tree,pOrder))
+        //[17] StringTuple -> String comma StringTuple 
+        (fun tree pOrder ->
+            match tree with
+            | (TupleArgs args)::arg::tree ->
+                ((TupleArgs (arg::args))::tree,pOrder)
+            | arg::tree ->
+                ((TupleArgs [arg])::tree,pOrder)
+            | _ -> (tree,pOrder)
+            )
+        //[18] StringTuple -> String 
+        (fun tree pOrder ->
+            match tree with
+            | (TupleArgs args)::arg::tree ->
+                ((TupleArgs (arg::args))::tree,pOrder)
+            | arg::tree ->
+                ((TupleArgs [arg])::tree,pOrder)
+            | _  -> (tree,pOrder)
+            )
+        //[19] String -> string 
+        (fun tree pOrder -> (tree,pOrder))
+        //[20] Num -> num 
+        (fun tree pOrder -> (tree,pOrder))
+        |]
+    let lexer inStr =
+        let tokensL = new List<string * Option<string>>()
+        let addToken (tGroup : GroupCollection) =
+            if tGroup.[1].Value <> "" then
+                tokensL.Add(("string",Some tGroup.[1].Value))
+            elif tGroup.[2].Value <> "" then
+                tokensL.Add(("identifier",Some tGroup.[2].Value))
+            elif tGroup.[3].Value <> "" then
+                tokensL.Add(("num",Some tGroup.[3].Value))
+            elif tGroup.[4].Value <> "" then
+                tokensL.Add("prod",None)
+            elif tGroup.[5].Value <> "" then
+                tokensL.Add("prec",None)
+            elif tGroup.[6].Value <> "" then
+                tokensL.Add("assoc",None)
+            elif tGroup.[7].Value <> "" then
+                tokensL.Add("group",None)
+            elif tGroup.[8].Value <> "" then
+                tokensL.Add("token",None)
+            elif tGroup.[9].Value <> "" then
+                tokensL.Add("rarrow",None)
+            elif tGroup.[10].Value <> "" then
+                tokensL.Add("as",None)
+            elif tGroup.[11].Value <> "" then
+                tokensL.Add("comma",None)
+            elif tGroup.[12].Value <> "" then
+                tokensL.Add("mid",None)
+            elif tGroup.[13].Value <> "" then
+                tokensL.Add("lbrace",None)
+            elif tGroup.[14].Value <> "" then
+                tokensL.Add("rbrace",None)
+            elif tGroup.[15].Value <> "" then
+                tokensL.Add("bang",None)
+            else ()
+        let regToken =
+            "\"([^\"]*)\"|"+
+            "([A-Z][a-zA-Z']*)|"+
+            "([0-9]+)|"+
+            "(prod)|"+
+            "(prec)|"+
+            "(assoc)|"+
+            "(group)|"+
+            "(token)|"+
+            "(->)|"+
+            "(as)|"+
+            "(,)|"+
+            "(\\|)|"+
+            "(\\{)|"+
+            "(\\})|"+
+            "(!)|"+
+            "#[^\\n]*\\n|"+
+            "[\\n\\t\\r ]+"
+        let mfun (m : Match) =
+            addToken m.Groups
+            ""
+        let residueStr = Regex.Replace(inStr,regToken,mfun)
+        if residueStr <> "" then
+            failwith (sprintf "garbage in expression: %c" residueStr.[0])
+        else
+            tokensL.Add("$",None)
+            Array.init tokensL.Count (fun i -> tokensL.[i])

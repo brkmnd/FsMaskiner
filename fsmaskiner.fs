@@ -5,6 +5,8 @@ type Main =
     static member comcalc (input,ftab) =
         try ("",ComCalc.eval input ftab) with
         | Failure msg -> (msg,0.0)
+    static member grammar2jstables (input) =
+        Grammar2JsTable.createTables input
     static member prop2table (input,statusF : Func<int,string>,echoes) =
         let ((vtab,tree),status0) =
             try (PropParser.parse input,"") with

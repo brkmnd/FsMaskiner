@@ -1,0 +1,28 @@
+#token "bang" as "!"
+#token "string" as "escaped"
+#token "num" as "[0-9]+"
+#token "identifier" as ""
+#token "direction" as "left|right"
+#token "bang" as "!"
+
+
+prod Exp         -> "prod" Identifier "rarrow" ProdRight Exp
+prod Exp         -> "prec" String Num Exp
+prod Exp         -> "assoc" String "direction" Exp
+prod Exp         -> "token" Token Exp
+prod Exp         -> "bang" "token" BangToken Exp
+prod Exp         -> "group" Group Exp
+prod Exp         ->
+prod ProdRight   -> String ProdRight
+prod ProdRight   -> Identifier ProdRight
+prod ProdRight   -> "mid" ProdRight
+prod ProdRight   ->
+prod Token       -> String "as" String
+prod Token       -> String
+prod BangToken   -> StringTuple
+prod Group       -> String "lbrace" StringTuple "rbrace"
+prod Identifier  -> "identifier"
+prod StringTuple -> String "comma" StringTuple
+prod StringTuple -> String
+prod String      -> "string"
+prod Num         -> "num"

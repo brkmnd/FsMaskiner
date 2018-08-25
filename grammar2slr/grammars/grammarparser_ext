@@ -1,0 +1,39 @@
+token -cap "string", "identifiers", "num" as "\g[^\g]*\g", "[A-Z][a-zA-Z']*", "[0-9]*"
+token "bang" as "!"
+token "rarrow" as "->"
+token "lbrace" as "\\{"
+token "rbrace" as "\\}"
+token "comma" as ","
+token "colon" as ":"
+token "mid" as "\\|"
+token "f_cap" as "-cap"
+#token "f_exp" as "-exp"
+#token "f_uexp" as "-uexp"
+!token "[\\n\\t\\r ]+", "#[^\\n]*\\n" 
+
+group "definition" {"prod","prec","assoc","group","bang"}
+group "parentheses" {"lbrace","rbrace"}
+group "literal" {"string","num"}
+group "flag" {"f_cap"}
+
+
+prod Exp         -> "prod" Identifier "rarrow" ProdRight Exp
+prod Exp         -> "prec" String Num Exp
+prod Exp         -> "assoc" String "colon" StringTuple Exp
+prod Exp         -> "token" Token Exp
+prod Exp         -> "bang" "token" BangToken Exp
+prod Exp         -> "group" Group Exp
+prod Exp         ->
+prod ProdRight   -> String ProdRight
+prod ProdRight   -> Identifier ProdRight
+prod ProdRight   -> "mid" ProdRight
+prod ProdRight   ->
+prod Token       -> StringTuple "as" StringTuple
+prod Token       -> "f_cap" StringTuple "as" StringTuple
+prod BangToken   -> StringTuple
+prod Group       -> String "lbrace" StringTuple "rbrace"
+prod Identifier  -> "identifier"
+prod StringTuple -> String "comma" StringTuple
+prod StringTuple -> String
+prod String      -> "string"
+prod Num         -> "num"

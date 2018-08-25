@@ -1,0 +1,22 @@
+token -cap "string", "id", "var", "flag", "mbol_exp" as
+    "\g[^\g]*\g", "[a-zA-Z]+", "\$[a-zA-Z]+", "-[a-zA-Z0-9]+", "@[^;]*;"
+token "semicolon" as ";"
+token "eq" as "="
+token "plus" as "\\+"
+!token "\n","\t"," "
+
+prod Command      -> CChoice CChoice'
+prod CChoice'     -> "semicolon" Command |
+prod CChoice      -> Call | Assign
+prod Assign       -> "var" "eq" Assign'
+prod Assign'      -> "string" AssignAdd
+                        | "mbol_exp" AssignAdd
+                        | "var" AssignAdd
+prod AssignAdd    -> "plus" Assign' |
+prod Call         -> "id" CallArgs
+prod CallArgs     -> Arg |
+prod Arg          -> "flag" CallArgs
+                        | "string" CallArgs
+                        | "var" CallArgs
+                        | "id" CallArgs
+                        | "mbol_exp" CallArgs

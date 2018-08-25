@@ -266,6 +266,7 @@ module Grammar2Set =
      * Return : Dictionary of string * HashSet of terminals
      * *)
     let calcFollow grammar (firstS : Dictionary<string,HashSet<ProdExp>>) (nullableS : Dictionary<string,bool>) =
+        printfn "hetil"
         //Misc functions
         let isNullable pName =
             if nullableS.ContainsKey(pName) then nullableS.[pName]
