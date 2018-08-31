@@ -14,11 +14,12 @@ module Grammar2JsTable =
         match plist with
         | [ DataProds prods
             DataTokens tokens
+            DataTokensOrder tOrder
             DataBTokens btokens
             DataPrecs precs
             DataAssocs assocs
             DataGroups groups] ->
-                (prods,pOrder,tokens,btokens,precs,assocs,groups)
+                (prods,pOrder,tokens,tOrder,btokens,precs,assocs,groups)
         | t -> 
             failwith (sprintf "parser error: %s" msg)
     (* Format functions
@@ -105,7 +106,7 @@ module Grammar2JsTable =
     (* Create the tables and used lists
      * *)
     let createTables inStr =
-        let (prods,pOrder,tokenDefs,bTokenDefs,precs,assocs,groups) = parseGrammar inStr
+        let (prods,pOrder,tokenDefs,tokenDefsOrder,bTokenDefs,precs,assocs,groups) = parseGrammar inStr
         let (mergedTables,gotoTable,unfoldedGrammar) =
             createTables
                 (prods,pOrder)
@@ -130,4 +131,4 @@ module Grammar2JsTable =
                     )
                 (new List<string * List<string>>())
                 unfoldedGrammar
-        (mergedTables,gotoTable,conv_unfoldedGrammar,tokenDefs,bTokenDefs)
+        (mergedTables,gotoTable,conv_unfoldedGrammar,tokenDefs,tokenDefsOrder,bTokenDefs)

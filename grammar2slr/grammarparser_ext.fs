@@ -19,6 +19,7 @@ module GrammarParserExt =
         | TupleArgs of Tree list
         | DataProds of Dictionary<string,(GrammarParser.ProdExp list) list>
         | DataTokens of Dictionary<string,bool * string>
+        | DataTokensOrder of List<string>
         | DataBTokens of List<string>
         | DataPrecs of Dictionary<string,int>
         | DataAssocs of Dictionary<string,string>
@@ -35,6 +36,7 @@ module GrammarParserExt =
         | _ -> tree
     let data_productions = new Dictionary<string,(GrammarParser.ProdExp list) list>()
     let data_tokens = new Dictionary<string,bool * string>()
+    let data_tokens_order = new List<string>()
     let data_btokens = new List<string>()
     let data_assoc = new Dictionary<string,string>()
     let data_prec = new Dictionary<string,int>()
@@ -42,6 +44,7 @@ module GrammarParserExt =
     let clear_data () =
         data_productions.Clear()
         data_tokens.Clear()
+        data_tokens_order.Clear()
         data_btokens.Clear()
         data_assoc.Clear()
         data_prec.Clear()
@@ -52,6 +55,7 @@ module GrammarParserExt =
     let initTreeStack = [
         (DataProds data_productions)
         (DataTokens data_tokens)
+        (DataTokensOrder data_tokens_order)
         (DataBTokens data_btokens)
         (DataPrecs data_prec)
         (DataAssocs data_assoc)
@@ -83,6 +87,15 @@ module GrammarParserExt =
         else
             data_prec.Add(tName,(int) lev)
     let data_add2tokens cap tNames tVals pos =
+        let add2order =
+            List.fold
+                (fun (acc : List<string>) x ->
+                    match x with
+                    | LeafStr tName -> acc.Add(tName); acc
+                    | _ -> acc
+                    )
+                data_tokens_order
+                (List.rev tNames)
         let check tName = data_tokens.ContainsKey(tName)
         if List.length tNames <> List.length tVals then
             let (x,y) = pos
@@ -2165,7 +2178,17 @@ module GrammarParserExt =
                 let (t,_) = popOne newStack
                 let newStack = pushGoto newStack gotoTable.[t].[prod]
                 exec (i,a) newStack newTree newProdOrder
-            | Accept -> (tree,pOrder)
+            | Accept ->
+                let reversedTokenOrder =
+                    List.fold
+                        (fun _ x ->
+                            match x with
+                            | DataTokensOrder tOrder -> tOrder.Reverse()
+                            | _ -> ()
+                            )
+                        ()
+                        tree
+                (tree,pOrder)
             | Error msg ->
                 let (x,y) = a|>(fun (_,_,pos) -> pos)
                 failwith (sprintf "syntax error(%d,%d): %s" x y msg)

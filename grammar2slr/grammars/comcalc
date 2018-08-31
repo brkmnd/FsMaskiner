@@ -16,20 +16,17 @@ token "lpar", "rpar", "comma" as "(", ")", ","
 assoc "right" : "power"
 assoc "left" : "minus","plus","divide","times"
 
-prod Exp' -> Exp
-prod Exp  -> Exp "plus" Exp | Exp "minus" Exp
-prod Exp  -> Exp "times" Exp
-prod Exp  -> Exp "divide" Exp
-prod Exp  -> Exp "power" Exp
-prod Exp  -> Call
-prod Exp  -> Atom
-prod Exp  -> "minus" Exp
-prod Call -> "id" "lpar" Args "rpar"
-prod Args -> Arg
-prod Args -> Arg "comma" Args
-prod Arg  -> Exp
-prod Arg  -> Call
-prod Arg  ->
-prod Atom -> "lpar" Exp "rpar"
-prod Atom -> "float"
-prod Atom -> "int"
+prod Exp   -> Exp "plus" Exp | Exp "minus" Exp
+prod Exp   -> Exp "times" Exp
+prod Exp   -> Exp "divide" Exp
+prod Exp   -> Exp "power" Exp
+prod Exp   -> Call
+prod Exp   -> Atom
+prod Exp   -> "minus" Exp
+prod Call  -> "id" "lpar" Args "rpar"
+prod Args  -> Arg Args' |
+prod Args' -> "comma" Arg Args' |
+prod Arg   -> Exp
+prod Atom  -> "lpar" Exp "rpar"
+prod Atom  -> "float"
+prod Atom  -> "int"

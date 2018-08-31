@@ -1,7 +1,0 @@
-    let addLeaf2tree tree node =
-        match node with
-        | (name,Some v) ->
-            printfn "leave : %s" v
-            tree
-         | (name,None) ->
-            tree

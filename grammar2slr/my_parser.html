@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Grammar2Slr | Brkmnd.Com</title>
+<meta name="description" content="Convert a context free grammar to a SLR-parser.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face {
+    font-family: 'vera_mono';
+    src: url('fonts/veramono.eot');
+    src: url('fonts/veramono.eot?#iefix') format('embedded-opentype'),
+         url('fonts/veramono.woff2') format('woff2'),
+         url('fonts/veramono.woff') format('woff'),
+         url('fonts/veramono.ttf') format('truetype'),
+         url('fonts/veramono.svg#bitstream_vera_sans_monoroman') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+h2 {
+    color:white;
+    text-align:left;
+}
+a:link{display:inline-block;margin:5px;font-family:vera_mono;color:#A9A9F5;font-size:12pt;}
+a:visited{color:#A9A9F5;}
+a:hover{text-decoration:none;color:#F5A9E1;}
+.component {display:none;}
+textarea {
+    display:block;
+    width:800px;
+    height:800px;
+    background-color:#151515;
+    color:white;
+    font-family:vera_mono;
+    font-size:12pt;
+    border:1px solid gray;
+    border-radius:5px;
+}
+.table-out {
+    display:none;
+    background-color:#151515;
+    color:white;
+    font-family:vera_mono;
+    font-size:12pt;
+    border:1px solid gray;
+    border-radius:5px;
+    }
+.table-out td {
+    border:1px solid #2E2E2E;
+}
+.menu {
+    display:block;
+    margin-bottom:10px;
+    background-color:#151515;
+    color:white;
+    font-size:12pt;
+    font-family:vera_mono;
+}
+.menu select {
+    display:inline-block;
+    width:800px;
+    max-width:100%;
+    height:25px;
+    margin:5px;
+    padding:3px;
+    background-color:#151515;
+    color:white;
+    border:1px solid gray;
+    border-radius:5px;
+    box-sizing:border-box;
+}
+</style>
+</head>
+<body style="background-color:black;">
+<h1 style="display:block;text-align:center;color:white;">Grammar2Slr</h1>
+<center>
+<span class="menu"><select id="target-code-options"></select></span>
+
+<form runat="server">
+<span id="status_felt" runat="server" style="white-space:pre;  display:block;margin:10px;width:800px;font-family:vera_mono;color:white;text-align:left;">output:</span>
+<textarea id="tekst_ud" runat="server"></textarea>
+</form>
+
+<span id="tables-out" style="display:none;">
+<h2>Action Table</h2>
+<table class="table-out"></table>
+<h2>Goto Table</h2>
+<table class="table-out"></table>
+</span>
+
+</center>
+<!--
+* JS - Components
+* JS - Components
+-->
+<span class="component" id="komp-js-stack">var Stack = function(){
+    var stack = {};
+    var len = 0;
+    var pub = {};
+    pub.push = function(v0){
+        if(stack[len] !== undefined){
+            stack[len].val = v0;
+        }
+        else {
+            stack[len] = {val:v0};
+            }
+        len++;
+        };
+    pub.pop = function(){
+        if(len > 0){
+            len--;
+            return stack[len].val;
+            }
+        return null;
+        };
+    pub.popN = function(n,f){
+        var n0 = n;
+        while(len > 0 && n0 > 0){
+            f(this.pop());
+            n0--;
+            }
+        };
+    pub.peek = function(){
+        if(len > 0){
+            return stack[len - 1].val;
+            }
+        return null;
+        };
+    pub.foreach = function(f){
+        var i = len - 1;
+        while(i >= 0){
+            f(stack[i].val);
+            i--;
+            }
+        };
+    pub.count = function(){
+        return len;
+        };
+    return pub;
+    };
+</span>
+<span class="component" id="komp-js-type">var actionType = {
+    shift:function(d){
+        return {type:"shift",v:d};
+        },
+    reduce:function(d){
+        return {type:"reduce",v:d};
+        },
+    accept:function(d){
+        return {type:"accept",v:null};
+        },
+    error:function(msg){
+        return {type:"error",v:msg};
+        },
+    none:function(){
+        return {type:"none",v:null};
+        },
+    some:function(v){
+        return {type:"some",v:v}
+        }
+    };
+var isSome = function(m){
+    return m.t === "some";
+    };
+var isNone = function(m){
+    return m.t === "none";
+    };
+</span>
+<span class="component" id="komp-js-tokens-hoved">var _token = function(m,o){
+    //m.tv = token val
+    //m.t = some/none
+    //m.v = value if some, else null
+    if(o[m.tt] !== undefined){
+        return o[m.tt](m.tt,m.tv);
+        }
+    };
+/* Add tokens to the tree here.
+ * That is: Change Me!
+ */
+var addToken2tree = function(tree,node){
+    _token(node,{
+</span>
+<span class="component" id="komp-js-tokens-bund">       });
+    return tree;
+    };
+</span>
+<span class="component" id="komp-js-errors">var errors = {
+    syntax:function(pos,msg){
+        return "syntax error at (" + pos.y + "," + pos.x + "):" + msg;
+        },
+    garbage:function(g){
+        return "garbage in expression: '" + g + "'";
+        }
+    };
+</span>
+<span class="component" id="komp-js-lexer-hoved">var lexer = function(inStr){
+</span>
+<span class="component" id="komp-js-lexer-regex">    var rx = new RegExp(rxStr,"g");
+    var retI = 0;
+    var retval = {};
+    var linepos = {lnr:1,start:0};
+</span>
+<span class="component" id="komp-js-lexer-ret">    if(resStr !== ""){
+        retval["__success"] = false;
+        retval["__res"] = resStr;
+        }
+    else {
+        retval[retI] = {t:"none",v:null,tt:"$",tv:null,posX:linepos.x - linepos.start,posY:linepos.lnr};
+        }
+    return retval;
+    };
+</span>
+<span class="component" id="komp-js-parser">var parser = function(tokens){
+    var sStack = new Stack();
+    var tree = new Stack();
+    var i = 0;
+    var parsing = true;
+    if(tokens["__success"] !== undefined && !tokens["__success"]){
+        tree.push({error:true,msg:errors.garbage(tokens["__res"])});
+        return tree;
+        }
+    sStack.push(0);
+    while(parsing){
+        var s = sStack.peek();
+        var a = tokens[i].tt;
+        var entry = actionTable[s][a];
+        switch(entry.type){
+            case "shift":
+                sStack.push(entry.v);
+                tree = addToken2tree(tree,tokens[i]);
+                i += 1;
+                break;
+            case "reduce":
+                var r = entry.v;
+                var prod = productions_str[r];
+                var rSide = prod.rside;
+                var pName = prod.prod;
+                var pFun = productions_fun[r];
+                sStack.popN(rSide.length,function(x){});
+                sStack.push(gotoTable[sStack.peek()][pName].v);
+                tree = pFun(tree);
+                break;
+            case "accept":
+                return tree;
+            case "error":
+                var token = tokens[i];
+                tree.push({error:true,msg:errors.syntax({x:token.posX,y:token.posY},entry.v)});
+                return tree;
+            }
+        }
+    };
+</span>
+<!--
+* FSharp - Components
+* FSharp - Components
+-->
+<span class="component" id="komp-fs-hoved">module MyParser =
+    open System.Collections.Generic
+    open System.Text.RegularExpressions
+    type Action =
+        | Shift of int
+        | Reduce of int
+        | Accept
+        | Error of string
+    type Tree =
+        | EmptyTree
+    (* Add tokens to the tree here
+     * That is: Change Me!
+     *)
+    let addToken2tree tree node =
+        match node with
+</span>
+<span class="component" id="komp-fs-lexer-hoved">    let lexer inStr =
+        let tokensL = new List&lt;string * Option&lt;string&gt; * (int * int)&gt;()
+        let lineLens = new Stack&lt;int&gt;()
+        lineLens.Push(0)
+        let addToken xIndex (tGroup : GroupCollection) =
+            let totalLineLen = lineLens.Peek()
+</span>
+<span class="component" id="komp-fs-lexer-bund">        let mfun (m : Match) =
+            addToken m.Index m.Groups
+            ""
+        let residueStr = Regex.Replace(inStr,regToken,mfun)
+        if residueStr <> "" then
+            failwith (sprintf "garbage in expression: %c" residueStr.[0])
+        else
+            tokensL.Add("$",None,(inStr.Length - 1,lineLens.Count))
+            Array.init tokensL.Count (fun i -> tokensL.[i])
+</span>
+<span class="component" id="komp-fs-parser">    let parser tokens =
+        let tLen = Array.length tokens
+        let popOne = function
+            | s::stack -> (s,stack)
+            | _ -> failwith "parser: popOne error"
+        let popN n stack =
+            let rec exec n0 acc = function
+                | stack when n0 = n -> (acc,stack) 
+                | s::stack -> exec (n0 + 1) (acc @ [s]) stack
+                | [] ->
+                    failwith "parser: popN error"
+            exec 0 [] stack
+        let pushGoto stack = function
+            | Some g -> g::stack
+            | None -> stack
+        let getNextFromInput i =
+            if i < tLen - 1 then
+                (i + 1,tokens.[i+1])
+            else failwith "parser: getNextFromInputError"
+        let rec exec (i,a) sStack tree =
+            let (s,_) = popOne sStack
+            match actionTable.[s].[a|>(fun (a,_,_) -> a)] with
+            | Shift t ->
+                let newStack = t::sStack
+                let newTree = addToken2tree tree a
+                let (i,a) = getNextFromInput i
+                exec (i,a) newStack newTree
+            | Reduce r ->
+                let (prod,rSide,prodF,pos) =
+                    let (a0,b0) = productions_str.[r]
+                    let f = productions_fun.[r]
+                    let p = a|>(fun (_,_,pos) -> pos)
+                    (a0,b0,f,p)
+                let newTree = prodF tree
+                let betaLen = Array.length rSide
+                let (_,newStack) = popN betaLen sStack
+                let (t,_) = popOne newStack
+                let newStack = pushGoto newStack gotoTable.[t].[prod]
+                exec (i,a) newStack newTree
+            | Accept -> tree
+            | Error msg ->
+                let (x,y) = a|>(fun (_,_,pos) -> pos)
+                failwith (sprintf "syntax error(%d,%d): %s" x y msg)
+        exec (0,tokens.[0]) [0] [EmptyTree]
+</span>
+<span class="component" id="komp-fs-exe">    let parse str =
+        let lexed = lexer str
+        let parsed = parser lexed
+        parsed
+</span>
+<!--
+* \Components
+* \Components
+-->
+<script src="tableout.js"></script>
+<script>
+    var textOut = document.getElementById("tekst_ud");
+    var indent1 = "    ";
+    var indent2 = indent1 + indent1;
+    var indent3 = indent1 + indent2;
+    var indent4 = indent2 + indent2;
+    var nonTerms = function(){
+        var retval = [];
+        var i = 0;
+        while(productions_str[i] !== undefined){
+            var prodN = productions_str[i].prod;
+            if(prodN !== "__" && retval.indexOf(prodN) < 0){
+                retval.push(prodN);
+                }
+            i++;
+            }
+        return retval;
+        }();
+    var lang_fs = { 
+        shift:function(v){
+            return "Shift " + v;
+            },
+        reduce:function(v){
+            return "Reduce " + v;
+            },
+        error:function(v){
+            return "Error \"" + v + "\"";
+            },
+        accept:function(){
+            return "Accept";
+            },
+        some:function(v){
+            return "Some " + v;
+            },
+        none:function(){
+            return "None";
+            }
+        };
+    var lang_js = {
+        shift:function(v){
+            return "actionType.shift(" + v.toString() + ")";
+            },
+        reduce:function(v){
+            return "actionType.reduce(" + v.toString() + ")";
+            },
+        error:function(v){
+            return "actionType.error(\"" + v + "\")";
+            },
+        accept:function(){
+            return "actionType.accept()";
+            },
+        some:function(v){
+            return "actionType.some(" + v.toString() + ")";
+            },
+        none:function(){
+            return "actionType.none()";
+            }
+        };
+    var lang_html = {
+        shift:function(v){
+            return "s" + v.toString();
+            },
+        reduce:function(v){
+            return "r" + v.toString();
+            },
+        error:function(v){
+            return "";
+            },
+        accept:function(){
+            return "accept";
+            },
+        some:function(v){
+            return "g" + v.toString();
+            },
+        none:function(){
+            return "";
+            },
+        };
+    var domParser = new DOMParser;
+    var textarea = {
+        add:function(v){
+            var rx = new RegExp("&amp;|&gt;|&lt;","g");
+            var decoded = v.replace(rx,function(a){
+                if(a === "&amp;"){
+                    return "&"
+                    }
+                if(a === "&gt;"){
+                    return ">";
+                    }
+                if(a === "&lt;"){
+                    return "<";
+                    }
+                return a;
+                });
+            textOut.value += decoded;
+            },
+        clear:function(){
+            textOut.value = "";
+            }
+        };
+    var targetFS = function(){
+        var intTokens = function(){
+            var retval = [];
+            for(var i = 0; i < tokens.length; i++){
+                retval.push(tokens[i].name)
+                }
+            retval.push("$");
+            return retval;
+            }();
+        var addToken2TreeMatch = function(){
+            var retstr = "";
+            for(var i = 0; i < tokens.length; i++){
+                var token = tokens[i];
+                if(token.cap){
+                    retstr += indent2;
+                    retstr += "| (\"" + token.name + "\",Some v,pos) -> tree\n";
+                    }
+                }
+            retstr += indent2;
+            retstr += "| _ -> tree\n";
+            return retstr;
+            }();
+        var tabel_action = function(){
+            var retstr = indent1 + "let actionTable = [|\n";
+            var i0 = 0;
+            while(actionTable[i0] !== undefined){
+                retstr += indent2 + "(fun (dict : Dictionary<string,Action>) ->\n";
+                for(var j = 0; j < intTokens.length; j++){
+                    var tokenName = intTokens[j];
+                    retstr += indent3;
+                    retstr += "dict.Add(";
+                    retstr += "\"" + tokenName + "\"";
+                    retstr += ",";
+                    retstr += actionTable[i0][tokenName](lang_fs);
+                    retstr += ")\n";
+                    }
+                retstr += indent3 + "dict\n"; retstr += indent3 + ")(new Dictionary<string,Action>())\n";
+                i0++;
+                }
+            retstr += indent2 + "|]\n";
+            return retstr;
+            }();
+        var tabel_goto = function(){
+            var retstr = indent1 + "let gotoTable = [|\n";
+            var i = 0;
+            while(gotoTable[i] !== undefined){
+                var g = gotoTable[i];
+                retstr += indent2 + "(fun (dict : Dictionary<string,Option<int>>) ->\n";
+                for(var j = 0; j < nonTerms.length; j++){
+                    var term = nonTerms[j];
+                    retstr += indent3;
+                    retstr += "dict.Add(";
+                    retstr += "\"" + term + "\",";
+                    retstr += gotoTable[i][term](lang_fs);
+                    retstr += ")\n";
+                    }
+                retstr += indent3 + "dict\n";
+                retstr += indent3 + ")(new Dictionary<string,Option<int>>())\n"
+                i++;
+                }
+            retstr += indent2 + " |]\n";
+            return retstr;
+            }();
+        var tabel_prod_fun = function(){
+            var retstr =
+                indent1 + "(* Change Me! Add to the abstract syntax tree here *)\n"+
+                indent1 + "let productions_fun = [|\n";
+            var i = 0;
+            while(productions_str[i] !== undefined){
+                var prod = productions_str[i];
+                var lside = prod.prod;
+                var rside = prod.rside;
+                retstr += indent2;
+                retstr += "//[" + i.toString() + "] ";
+                retstr += lside;
+                retstr += " -> ";
+                for(var j = 0; j < rside.length; j++){
+                    retstr += rside[j] + " ";
+                    }
+                retstr += "\n";
+                retstr += indent2 + "(fun tree -> tree)\n";
+                i++
+                }
+            retstr += indent2 + "|]\n";
+            return retstr;
+            }();
+        var tabel_prod_str = function(){
+            var retstr = indent1 + "let productions_str = [|\n";
+            var i = 0;
+            while(productions_str[i] !== undefined){
+                var prod = productions_str[i];
+                var lside = prod.prod;
+                var rside = prod.rside;
+                var j = 0;
+                retstr += indent2;
+                retstr += "(";
+                retstr += "\"" + lside + "\",";
+                retstr += "[|";
+                for(j = 0; j < rside.length; j++){
+                    retstr += "\"" + rside[j] + "\";";
+                    }
+                if(j > 0){
+                    retstr = retstr.substr(0,retstr.length - 1);
+                    }
+                retstr += "|])\n";
+                i++;
+                }
+            retstr += indent2 + "|]\n";
+            return retstr;
+            }();
+        var lexer = function(){
+            var rx_str = function(){
+                var escTegn = function(t){
+                    var rx = new RegExp("\\/|\\.|\\(|\\)|\\\\","g");
+                    return t.replace(rx,function(a){
+                        if(a === "\\"){
+                            return "\\" + a;
+                            }
+                        return "\\\\" + a;
+                        });
+                    };
+                var retstr = indent2;
+                retstr += "let regToken =\n";
+                for(var i = 0; i < tokens.length; i++){
+                    retstr += indent3;
+                    retstr += "\"(" + escTegn(tokens[i].reg) + ")|\"+\n";
+                    }
+                for(var i = 0; i < btokens.length; i++){
+                    retstr += indent3;
+                    retstr += "\"" + btokens[i] + "|\"+\n";
+                    }
+                return retstr.substr(0,retstr.length - 4) + "\";\n";
+                };
+            var rx_fun = function(){
+                var retstr = "";
+                for(var i = 0; i < tokens.length; i++){
+                    var tGroupV = "tGroup.[" + (i + 1).toString() + "].Value";
+                    var option = function(){
+                        if(tokens[i].cap){
+                            return "Some (" + tGroupV + ")";
+                            }
+                        return "None";
+                        }();
+                    retstr += indent3 + "if " + tGroupV + " <> \"\" then\n";
+                    retstr += indent4 + "tokensL.Add((";
+                    retstr += "\"" + tokens[i].name + "\",";
+                    retstr += option + ",";
+                    retstr += "(xIndex + 1 - totalLineLen,lineLens.Count)";
+                    retstr += "))\n";
+                    }
+                return retstr;
+                };
+            return {
+                rx_str:rx_str(),
+                rx_fun:rx_fun()
+                };
+            }();
+        var komponenter = {
+            hoved:document.getElementById("komp-fs-hoved").innerHTML,
+            lexer_hoved:document.getElementById("komp-fs-lexer-hoved").innerHTML.replace("&lt;","<").replace("&gt;",">"),
+            lexer_bund:document.getElementById("komp-fs-lexer-bund").innerHTML,
+            parser:document.getElementById("komp-fs-parser").innerHTML,
+            exe:document.getElementById("komp-fs-exe").innerHTML
+            };
+        textarea.add(komponenter.hoved);
+        textarea.add(addToken2TreeMatch);
+        textarea.add(tabel_prod_fun);
+        //lexer
+        textarea.add(komponenter.lexer_hoved);
+        textarea.add(lexer.rx_fun);
+        textarea.add(lexer.rx_str);
+        textarea.add(komponenter.lexer_bund);
+        //\lexer
+        textarea.add(tabel_action);
+        textarea.add(tabel_goto);
+        textarea.add(tabel_prod_str);
+        textarea.add(komponenter.parser);
+        textarea.add(komponenter.exe);
+        };
+    var targetJS = function(){
+        var komponenterJS = function(){
+            var komp_stack = document.getElementById("komp-js-stack");
+            var komp_type = document.getElementById("komp-js-type");
+            var komp_tokens_hoved = document.getElementById("komp-js-tokens-hoved");
+            var komp_tokens_krop = function(){
+                var retstr = "";
+                for(var i = 0; i < tokens.length; i++){
+                    var token = tokens[i];
+                    if(token.cap){
+                        retstr += indent2;
+                        retstr += "\"" + token.name + "\":";
+                        retstr += "function(tokenType,tokenVal){ /* do something to tree */ },\n";
+                        }
+                    }
+                return retstr.substr(0,retstr.length - 2) + "\n";
+                }();
+            var komp_tokens_bund = document.getElementById("komp-js-tokens-bund");
+            var komp_errors = document.getElementById("komp-js-errors");
+            var komp_lexer_hoved = document.getElementById("komp-js-lexer-hoved");
+            var komp_lexer_regex = document.getElementById("komp-js-lexer-regex");
+            var komp_lexer_ret = document.getElementById("komp-js-lexer-ret");
+            var komp_parser = document.getElementById("komp-js-parser");
+            return {
+                stack:komp_stack.innerHTML,
+                type:komp_type.innerHTML,
+                tokens:komp_tokens_hoved.innerHTML + komp_tokens_krop + komp_tokens_bund.innerHTML,
+                errors:komp_errors.innerHTML,
+                lexer_hoved:komp_lexer_hoved.innerHTML,
+                lexer_regex:komp_lexer_regex.innerHTML,
+                lexer_ret:komp_lexer_ret.innerHTML,
+                parser:komp_parser.innerHTML
+                }
+            };
+        var tabellerJS = function(){
+            var intTokens = function(){
+                var retval = [];
+                for(var i = 0; i < tokens.length; i++){
+                    retval.push(tokens[i].name)
+                    }
+                retval.push("$");
+                return retval;
+                }();
+            var tabel_action = function(){
+                var retstr = "var actionTable = {\n";
+                var i0 = 0;
+                while(actionTable[i0] !== undefined){
+                    retstr += indent1 + i0.toString() + ":{\n";
+                    for(var j = 0; j < intTokens.length; j++){
+                        var tokenName = intTokens[j];
+                        retstr += indent2;
+                        retstr += "\"" + tokenName + "\":";
+                        retstr += actionTable[i0][tokenName](lang_js);
+                        retstr += ",\n";
+                        }
+                    retstr = retstr.substr(0,retstr.length - 2) + "\n";
+                    retstr += indent2 + "},\n";
+                    i0++;
+                    }
+                return retstr.substr(0,retstr.length - 2) + "\n" + indent1 + "};\n";
+                }();
+            var tabel_goto = function(){
+                var retstr = "var gotoTable = {\n";
+                var i = 0;
+                while(gotoTable[i] !== undefined){
+                    var g = gotoTable[i];
+                    retstr += indent1 + i.toString() + ":{\n";
+                    for(var j = 0; j < nonTerms.length; j++){
+                        var term = nonTerms[j];
+                        retstr += indent2;
+                        retstr += "\"" + term + "\":";
+                        retstr += gotoTable[i][term](lang_js);
+                        retstr += ",\n";
+                        }
+                    retstr  = retstr.substr(0,retstr.length - 2) + "\n";
+                    retstr += indent2 + "},\n";
+                    i++;
+                    }
+                return retstr.substr(0,retstr.length - 2) + "\n" + indent1 + "};\n";
+                }();
+            var tabel_prod_fun = function(){
+                var retstr =
+                    "/* Change Me! Create the abstract syntax tree here */\n"+
+                    "var productions_fun = {\n";
+                var i = 0;
+                while(productions_str[i] !== undefined){
+                    var prod = productions_str[i];
+                    var lside = prod.prod;
+                    var rside = prod.rside;
+                    retstr += indent1;
+                    retstr += "//[" + i.toString() + "] ";
+                    retstr += lside;
+                    retstr += " -> ";
+                    for(var j = 0; j < rside.length; j++){
+                        retstr += rside[j] + " ";
+                        }
+                    retstr += "\n";
+                    retstr += indent1 + i.toString() + ":";
+                    retstr += "function(tree){ return tree; },";
+                    retstr += "\n";
+                    i++
+                    }
+                return retstr.substr(0,retstr.length - 2) + "\n" + indent1 + "};\n";
+                }();
+            var tabel_prod_str = function(){
+                var retstr = "var productions_str = {\n";
+                var i = 0;
+                while(productions_str[i] !== undefined){
+                    var prod = productions_str[i];
+                    var lside = prod.prod;
+                    var rside = prod.rside;
+                    retstr += indent1;
+                    retstr += i.toString() + ":";
+                    retstr += "{prod:\"" + lside + "\",";
+                    retstr += "rside:[ ";
+                    for(var j = 0; j < rside.length; j++){
+                        retstr += "\"" + rside[j] + "\",";
+                        }
+                    retstr  = retstr.substr(0,retstr.length - 1);
+                    retstr += "]},\n";
+                    i++;
+                    }
+                return retstr.substr(0,retstr.length - 2) + "\n" + indent1 + "};\n";
+                }();
+            return {
+                action:tabel_action,
+                goto:tabel_goto,
+                prod_fun:tabel_prod_fun,
+                prod_str:tabel_prod_str
+                };
+            };
+        var lexerJS = function(){
+            var rx_str = function(){
+                var escTegn = function(t){
+                    var rx = new RegExp("\\/|\\.|\\(|\\)|\\\\","g");
+                    return t.replace(rx,function(a){
+                        if(a === "\\"){
+                            return "\\" + a;
+                            }
+                        return "\\\\" + a;
+                        });
+                    };
+                var retstr = indent1;
+                retstr += "var rxStr =\n";
+                for(var i = 0; i < tokens.length; i++){
+                    retstr += indent2;
+                    retstr += "\"(" + escTegn(tokens[i].reg) + ")|\"+\n";
+                    }
+                for(var i = 0; i < btokens.length; i++){
+                    retstr += indent2;
+                    retstr += "\"" + btokens[i] + "|\"+\n";
+                    }
+                return retstr.substr(0,retstr.length - 4) + "\";\n";
+                }();
+            var rx_fun = function(){
+                var retstr = indent1;
+                retstr += "var resStr = inStr.replace(rx,\n";
+                retstr += indent2;
+                retstr += "function(a,";
+                for(var i = 0; i < tokens.length; i++){
+                    retstr += "i" + (i + 1).toString() + ",";
+                    }
+                retstr  = retstr.substr(0,retstr.length - 1) + ",posX){\n";
+                retstr += indent3 + "if(a === \"\\n\"){\n";
+                retstr += indent4 + "linepos.lnr++;\n";
+                retstr += indent4 + "linepos.start = posX;\n";
+                retstr += indent4 + "}\n";
+                for(var i = 0; i < tokens.length; i++){
+                    var statement = function(){
+                        if(i === 0){
+                            return "if";
+                            }
+                        else {
+                            return "else if";
+                            }
+                        }();
+                    var option = function(){
+                        if(tokens[i].cap){
+                            return "\"some\"";
+                            }
+                        return "\"none\"";
+                        }();
+                    var tval = function(){
+                        if(tokens[i].cap){
+                            return "i" + (i + 1).toString() + ",";
+                            }
+                        return "null,";
+                        }();
+                    retstr += indent3;
+                    retstr += statement + "(";
+                    retstr += "typeof i" + (i + 1).toString();
+                    retstr += " !== ";
+                    retstr += "\"undefined\"){\n";
+                    retstr += indent4;
+                    retstr += "retval[retI] = {";
+                    retstr += "t:" + option + ",";
+                    retstr += "tt:" + "\"" + tokens[i].name + "\",";
+                    retstr += "tv:" + tval;
+                    retstr += "posX:posX - linepos.start,";
+                    retstr += "posY:linepos.lnr";
+                    retstr += "};\n";
+                    retstr += indent4;
+                    retstr += "retI++;\n";
+                    retstr += indent4;
+                    retstr += "}\n";
+                    }
+                retstr += indent3 + "return \"\";\n";
+                retstr += indent3 + "}\n";
+                retstr += indent2 + ");\n";
+                return retstr;
+                }();
+            return {
+                rx_str:rx_str,
+                rx_fun:rx_fun
+                };
+            };
+        var komponenter = komponenterJS();
+        var tabeller = tabellerJS();
+        var lexer = lexerJS();
+        var konvJS = function(){
+            //misc
+            textarea.add(komponenter.stack);
+            textarea.add(komponenter.type);
+            textarea.add(komponenter.tokens);
+            textarea.add(komponenter.errors);
+            
+            //prods
+            textarea.add(tabeller.prod_fun);
+            textarea.add(tabeller.prod_str);
+           
+            //lexer
+            textarea.add(komponenter.lexer_hoved);
+            textarea.add(lexer.rx_str);
+            textarea.add(komponenter.lexer_regex);
+            textarea.add(lexer.rx_fun);
+            textarea.add(komponenter.lexer_ret);
+            
+            //tabeller
+            textarea.add(tabeller.action);
+            textarea.add(tabeller.goto);
+            //parser
+            textarea.add(komponenter.parser);
+            };
+        konvJS();
+        };
+    var targetHTML = function(){
+        var intTokens = function(){
+            var retval = [];
+            for(var i = 0; i < tokens.length; i++){
+                retval.push(tokens[i].name)
+                }
+            retval.push("$");
+            return retval;
+            }();
+        var tabel_action = function(){
+            var retstr = "<!-- Action Table -->\n";
+            var i = 0;
+            retstr += "<table>\n<tr>";
+            for(var j = 0; j < intTokens.length; j++){
+                retstr += "<td>";
+                retstr += intTokens[j];
+                retstr += "</td>";
+                }
+            retstr += "</tr>\n";
+            while(actionTable[i] !== undefined){
+                retstr += "<tr>";
+                for(var j = 0; j < intTokens.length; j++){
+                    var tokenName = intTokens[j];
+                    retstr += "<td>";
+                    retstr += actionTable[i][tokenName](lang_html);
+                    retstr += "</td>";
+                    }
+                retstr += "</tr>\n";
+                i++;
+                }
+                return retstr + "</table>\n";
+            }();
+        var tabel_goto = function(){
+            var retstr = "\n<!-- Goto Table -->\n";
+            var i = 0;
+            retstr += "<table>\n<tr><td></td>";
+            for(var j = 0; j < nonTerms.length; j++){
+                retstr += "<td>";
+                retstr += nonTerms[j];
+                retstr += "</td>";
+                }
+            retstr += "</tr>\n";
+            while(gotoTable[i] !== undefined){
+                var g = gotoTable[i];
+                retstr += "<tr><td>"+i.toString()+"</td>";
+                for(var j = 0; j < nonTerms.length; j++){
+                    var term = nonTerms[j];
+                    retstr += "<td>";
+                    retstr += gotoTable[i][term](lang_html);
+                    retstr += "</td>";
+                    }
+                retstr += "</tr>\n";
+                i++;
+                }
+            return retstr + "</table>\n";
+            }();
+        textarea.add(tabel_action);
+        textarea.add(tabel_goto);
+        };
+    var targetTable = function(tableUd1,tableUd2){
+        var intTokens = function(){
+            var retval = [];
+            for(var i = 0; i < tokens.length; i++){
+                retval.push(tokens[i].name)
+                }
+            retval.push("$");
+            return retval;
+            }();
+        var tabel_action = function(){
+            var retstr = "";
+            var i = 0;
+            retstr += "<tr><td></td>";
+            for(var j = 0; j < intTokens.length; j++){
+                retstr += "<td>";
+                retstr += intTokens[j];
+                retstr += "</td>";
+                }
+            retstr += "</tr>\n";
+            while(actionTable[i] !== undefined){
+                retstr += "<tr><td>" + i.toString() + "</td>";
+                for(var j = 0; j < intTokens.length; j++){
+                    var tokenName = intTokens[j];
+                    retstr += "<td>";
+                    retstr += actionTable[i][tokenName](lang_html);
+                    retstr += "</td>";
+                    }
+                retstr += "</tr>\n";
+                i++;
+                }
+            return retstr;
+            }();
+        var tabel_goto = function(){
+            var retstr = "";
+            var i = 0;
+            retstr += "<tr><td></td>";
+            for(var j = 0; j < nonTerms.length; j++){
+                retstr += "<td>";
+                retstr += nonTerms[j];
+                retstr += "</td>";
+                }
+            retstr += "</tr>";
+            while(gotoTable[i] !== undefined){
+                var g = gotoTable[i];
+                retstr += "<tr><td>"+i.toString()+"</td>";
+                for(var j = 0; j < nonTerms.length; j++){
+                    var term = nonTerms[j];
+                    retstr += "<td>";
+                    retstr += gotoTable[i][term](lang_html);
+                    retstr += "</td>";
+                    }
+                retstr += "</tr>";
+                i++;
+                }
+            return retstr;
+            }();
+        tableUd1.innerHTML = tabel_action;
+        tableUd2.innerHTML = tabel_goto;
+        };
+    
+
+
+var createOptions = function(){
+    var os = document.getElementById("target-code-options");
+    var tableOut1 = document.getElementsByClassName("table-out")[0];
+    var tableOut2 = document.getElementsByClassName("table-out")[1];
+    var tablesOut = document.getElementById("tables-out");
+    var options = [
+        {name:"HTML - Table",f:function(){ targetHTML(); }},
+        {name:"JS - Parser",f:function(){ targetJS(); }},
+        {name:"FSharp - Parser",f:function(){ targetFS(); }},
+        {name:"Table",
+            f:function(){
+                textOut.style.display = "none";
+                tableOut1.style.display = "block";
+                tableOut2.style.display = "block";
+                tablesOut.style.display = "block";
+                targetTable(tableOut1,tableOut2);
+                }
+            }
+        ];
+    os.appendChild(function(){
+        var startOp = document.createElement("option");
+        startOp.innerHTML = "";
+        return startOp;
+        }());
+    for(var i = 0; i < options.length; i++){
+        var newO = function(){
+            var oo = options[i];
+            var o = document.createElement("option");
+            o.innerHTML = oo.name;
+            o.onclick = function(){
+                textarea.clear();
+                textOut.style.display = "block";
+                tablesOut.style.display = "none";
+                oo.f();
+                };
+            return o;
+            }();
+        os.appendChild(newO);
+        }
+    }();
+
+</script>
+</body>
+</html>
