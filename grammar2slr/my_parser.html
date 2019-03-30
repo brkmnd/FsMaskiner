@@ -670,9 +670,11 @@ var addToken2tree = function(tree,node){
                 while(actionTable[i0] !== undefined){
                     retstr += indent1 + i0.toString() + ":{\n";
                     for(var j = 0; j < intTokens.length; j++){
+                        if(intTokens[j] === undefined) alert("g");
                         var tokenName = intTokens[j];
                         retstr += indent2;
                         retstr += "\"" + tokenName + "\":";
+                        if(actionTable[i0][tokenName] === undefined) alert(tokenName);
                         retstr += actionTable[i0][tokenName](lang_js);
                         retstr += ",\n";
                         }

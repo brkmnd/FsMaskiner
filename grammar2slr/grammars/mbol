@@ -1,0 +1,157 @@
+#keywords: this(for rec),true,false
+#types: [A-Z][a-zA-Z]*
+#ids: [a-z]*
+#chaining: ; (can be used for return,index,data-struct creating and so on
+#need dot operator for accessing 
+
+
+#Tokens
+token   "lbracem"   ,"rbracem"  ,"lpar"  ,"lbrace"   ,"lbracket" ,"rpar" ,"rbrace"   ,"rbracket"
+    as  "\\{\\|"    ,"\\|\\}"   ,"\\("     ,"\\{"    ,"\\["      ,"\\)"  ,"\\}"      ,"\\]"
+token   "plus"  ,"minus"    ,"times"    ,"divide"   ,"modulo"   ,"power"
+    as  "\\+"   ,"-"        ,"\\*"      ,"\\/"      ,"%"      ,"\\*\\*"
+token   "eq"    ,"not-eq"   ,"gt"   ,"geq"  ,"lt"   ,"leq"
+    as  "=="    ,"!="       ,">"    ,">="   ,"<"    ,"<="
+token   "and"   ,"or"       ,"imp"      ,"biimp"    ,"not"
+    as  "&&"    ,"\\|\\|"   ,"=>"       ,"<=>"      ,"!"
+token   "lapp"  ,"rapp"     ,"rarr"
+    as  "|>"    ,"<|"       ,"->"
+token   "comma" ,"dot"  ,"colon"    ,"mid"  ,"uscore"    ,"qmark"    ,"hash"
+    as  ","     ,"."    ,":"        ,"\\|"  ,"_"         ,"?"        ,"#"
+token   "bslash","up"   ,"amp"  ,"tilde"    ,"scolon"    ,"dcolon"
+    as  "\\\\"  ,"^"    ,"&"    ,"~"        ,";"         ,"::"
+token   "sleft" ,"sright"
+    as  "<<"    ,">>"
+token   "let"   ,"assign"   ,"this"
+    as  "let"   ,"="        ,"this"
+#caps
+token -cap  "int"           ,"float"        ,"string"   ,"bool"
+    as      "[0-9][0-9]*"   ,"[0.9]*.[0-9]+","\g[^\g]\g","true|false"
+token -cap  "type"              ,"id"
+    as      "[A-Z][a-zA-Z0-9_]" ,"[a-z][a-zA-Z0-9_]"
+#Groups
+group "parenthese" {"lpar","lbrace","lbracket","rpar","rbrace","rbracket"}
+group "operator" {"plus","minus","times","divide","modulo","power","and","or","imp","biimp","not","eq","not-eq","gt","geq","lt","leq","lapp","rapp","rarr","up","amp","tilde"}
+group "delimiter" {"comma","dot","colon","mid","uscore","qmark","semicolon"}
+
+#Precedence
+#misc ops
+prec "colon"     1
+prec "dcolon"    1
+prec "scolon"    1
+prec "dot"       1
+prec "dotdot"    1
+#ops
+prec "rapp"      2
+prec "lapp"      3
+prec "rarr"      4
+
+prec "eq"        5
+prec "not-eq"    5
+prec "gt"        5
+prec "geq"       5
+prec "lt"        5
+prec "leq"       5
+#bitwise
+prec "sleft"     6
+prec "sright"    6
+prec "amp"      7
+prec "up"        8
+prec "bslash"    9
+prec "tilde"    10
+
+prec "minus"    11
+prec "plus"     11
+prec "times"    12
+prec "divide"   12
+prec "modulo"   13
+prec "power"    13
+
+prec "biimp"    14
+prec "imp"      15
+prec "or"       16
+prec "and"      17
+prec "not"      18
+
+#Associacivity
+assoc "left" : "lapp","eq","not-eq","gt","geq","lt","leq","minus","plus","times","divide","modulo","not","and","or","amp","bslash","up","rarr","marr","att","scolon","sleft","sright","dot","dotdot"
+assoc "right" : "rapp","imp","biimp","power","dcolon"
+
+#Start prod
+prod Stmt       -> Bind "scolon" Stmt
+                 | Exp
+#Assign
+prod Bind       -> "let" IdTuple "assign" Exp
+#Arithmetic
+prod Exp        -> Exp "plus" Exp
+prod Exp        -> Exp "minus" Exp
+prod Exp        -> Exp "times" Exp
+prod Exp        -> Exp "divide" Exp
+prod Exp        -> Exp "modulo" Exp
+prod Exp        -> Exp "power" Exp
+prod Exp        -> "minus" Exp
+#Logic
+prod Exp        -> Exp "and" Exp
+prod Exp        -> Exp "or" Exp
+prod Exp        -> Exp "imp" Exp
+prod Exp        -> Exp "biimp" Exp
+prod Exp        -> "not" Exp
+#Bitwise
+prod Exp        -> Exp "up" Exp
+prod Exp        -> Exp "bslash" Exp
+prod Exp        -> Exp "amp" Exp
+prod Exp        -> Exp "sleft" Exp
+prod Exp        -> Exp "sright" Exp
+prod Exp        -> "tilde" Exp
+#Relations
+prod Exp        -> Exp "eq" Exp
+prod Exp        -> Exp "not-eq" Exp
+prod Exp        -> Exp "gt" Exp
+prod Exp        -> Exp "geq" Exp
+prod Exp        -> Exp "lt" Exp
+prod Exp        -> Exp "leq" Exp
+#Ranges
+prod Exp        -> Exp "dotdot" Exp
+#Functions
+prod Exp        -> Exp "lapp" Exp
+prod Exp        -> Exp "rapp" Exp
+prod Exp        -> Exp "rarr" Exp
+#Matching
+prod Exp        -> "mid" Matcher
+prod Matcher    -> MatchLeft MatchWhen "colon" Stmt Matcher'
+prod Matcher'   -> "mid" Matcher
+                 | "scolon"
+prod MatchLeft  -> "type" Atom
+                 | Atom "dcolon" Atom
+                 | Atom
+prod MatchWhen  -> "qmark" Exp |
+
+#Atoms
+prod Exp        -> Atom
+prod Atom       -> Atom' | "lpar" AtomTuple "rpar"
+prod AtomTuple  -> Exp AtomTuple' |
+prod AtomTuple' -> "comma" Exp AtomTuple' |
+prod Atom'      -> Atom'' Indexer
+                 | Atom''
+prod Atom''     -> "int"
+                 | "float"
+                 | "string"
+                 | "id"
+                 | "type"
+                 | "bool"
+                 | "uscore"
+                 | "null"
+                 | List
+                 | Arr
+prod IdTuple    -> Id IdTuple'
+prod IdTuple'   -> "comma" Id IdTuple'
+                 |
+prod Id         -> "id" | "uscore"
+
+prod Indexer    -> "dot" "id" DotIndexer
+                 | "dot" "type" DotIndexer
+                 | "lbracket" Stmt "rbracket"
+prod DotIndexer -> Indexer |
+#Complex literals
+prod List       -> "lbrace" Stmt "rbrace"
+prod Arr        -> "lbracem" Stmt "rbracem"

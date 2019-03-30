@@ -159,6 +159,7 @@ module Grammar2Set =
                     (solved,new Dictionary<string,Nullable list>())
                     unsolved
             if unsolved.Count = newUnsolved.Count then
+                //rewrite at some point to normal fixpoint
                 failwith "nullable: circular error"
             elif newUnsolved.Count > 0 then
                 solveDependencies newSolved newUnsolved

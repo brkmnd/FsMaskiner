@@ -129,12 +129,15 @@ let exe_app parserName inputFileName =
         let bool2str b =
             if b then "true"
             else "false"
-        let tokensNotDef = mergedTables.[0]
+        let tokensFromTable =
+            if mergedTables.Length > 0 then mergedTables.[0]
+            else failwith "eemerged tables are empty"
         for token_key in tokenDefsOrder do
             let token_value = tokenDefs.[token_key]
             let token_cap = fst token_value
             let token_reg = snd token_value
-            if token_key <> "$" then
+            //exclude tokens that are defined but not present in table
+            if token_key <> "$" && tokensFromTable.ContainsKey(token_key) then
                 retval_tokens <-
                     sprintf
                         "%s{name:\"%s\",cap:%s,reg:\"%s\"},\n"
@@ -142,7 +145,8 @@ let exe_app parserName inputFileName =
                         token_key
                         (bool2str token_cap)
                         token_reg
-        for token in tokensNotDef do
+        //fix it so tokens not defined are included
+        for token in tokensFromTable do
             let token_key = token.Key
             if token_key <> "$" && not (tokenDefs.ContainsKey(token_key)) then
                 let token_cap = false
@@ -157,10 +161,13 @@ let exe_app parserName inputFileName =
         retval_tokens.[0 .. retval_tokens.Length - 3] + "\n]\n"
     let js_btokens =
         let mutable retval = "var btokens = ["
-        for btoken in bTokenDefs do
-            let repStr = btoken.Replace("\\","\\\\")
-            retval <- sprintf "%s\"%s\"," retval repStr
-        retval.[0 .. retval.Length - 2] + "];"
+        if bTokenDefs.Count = 0 then
+            retval + "]"
+        else
+            for btoken in bTokenDefs do
+                let repStr = btoken.Replace("\\","\\\\")
+                retval <- sprintf "%s\"%s\"," retval repStr
+            retval.[0 .. retval.Length - 2] + "];"
             
     (* Append components
      * *)

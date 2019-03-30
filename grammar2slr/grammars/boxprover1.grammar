@@ -1,0 +1,75 @@
+#grammar for boxprover
+prec "not" 6
+prec "all" 5
+prec "exi" 4
+prec "and" 3
+prec "or" 2
+prec "imp" 1
+assoc "left"  : "and","or","not"
+assoc "right" : "imp"
+token  "and","or","imp","not" as "/\\\\","\\\\/","=>","~"
+token "prem","assump" as "premise;","assumption;"
+token 
+    "all_e","all_i","bot_e","con_e1","con_e2","con_i","dis_e",
+    "dis_i1","dis_i2","eq_e","eq_i","exi_e","exi_i","imp_e","imp_i",
+    "neg_e","neg_i","nne","nni","pbc","top_i","var","all","exi","lem","mt","by"
+    as
+    "all_e(?= )","all_i(?= )","bot_e(?= )","con_e1(?= )","con_e2(?= )","con_i(?= )","dis_e(?= )",
+    "dis_i1(?= )","dis_i2(?= )","eq_e(?= )","eq_i(?= )","exi_e(?= )","exi_i(?= )","imp_e(?= )","imp_i(?= )",
+    "neg_e(?= )","neg_i(?= )","nne(?= )","nni(?= )","pbc(?= )","top_i(?= )","var(?= )","all(?= )","exi(?= )","lem(?= )","mt(?= )","by(?= )"
+
+token "lpar","rpar","lbracket","rbracket" as "(",")","\\[","\\]"
+token "uscore","scolon","dot" as "_",";","."
+token -cap "name" as "[a-zA-Z0-9@#\\-_]+"
+!token "\n","\r","\t"," "
+
+prod Lines      -> Line Lines
+                 | "scolon" Naming Lines
+                 | Naming Lines
+                 | "dot"
+                 |
+prod Line       -> Formula Rule LineOptEnd
+                 | "lpar" Box "rpar" LineOptEnd
+                 | "uscore"
+prod Rule       -> "prem" | "assump" | "by" RuleApply
+prod LineOptEnd -> "scolon" Naming Line
+                 | Naming Line
+                 | "dot" |
+prod Box        -> "var" Naming Line
+                 | Line
+prod RuleApply  -> "top_i"
+                 | "con_i" "name" "name"
+                 | "con_e1" "name"
+                 | "con_e2" "name"
+                 | "dis_i1" "name"
+                 | "dis_i2" "name"
+                 | "dis_e" "name" "name"
+                 | "imp_i" "name"
+                 | "imp_e" "name" "name"
+                 | "neg_i" "name"
+                 | "neg_e" "name" "name"
+                 | "bot_e" "name"
+                 | "nne" "name"
+                 | "nni" "name"
+                 | "lem"
+                 | "pbc" "name"
+                 | "mt" "name" "name"
+                 | "all_i" "name"
+                 | "all_e" "name" "name"
+                 | "exi_i" "name" "name"
+                 | "exi_e" "name" "name"
+                 | "eq_i"
+                 | "eq_e" Bind "name" "name"
+prod Naming     -> "lbracket" "name" "rbracket"
+prod Formula    -> Formula "and" Formula
+                 | Formula "or" Formula
+                 | Formula "imp" Formula
+                 | "all" Bind
+                 | "exi" Bind
+                 | "not" Formula
+                 | Atom
+prod Bind       -> "lpar" Naming Formula "rpar" 
+prod Atom       -> "lpar" Formula "rpar"
+                 | "name" OptArgs
+prod OptArgs    -> "name" OptArgs
+                 |

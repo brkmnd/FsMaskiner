@@ -1,0 +1,27 @@
+token "lpar","rpar","lbracket","rbracket" as "(",")","[","]"
+token "var","premise;","assumption;","by"
+token "bot","top"
+token "con_i","con_e","dis_i","dis_e","imp_i","imp_e","neg_i","neg_e"
+token -cap "name" as "[a-zA-Z0-9@#]+"
+
+prod Line       -> Formula Rule LineOptEnd
+                      | "lpar" Box "rpar" LineOptEnd
+                      | "uscore"
+prod LineOptEnd -> "scolon" Naming Line
+                      | 
+prod Box        -> "var" Naming Line
+                      | Line
+prod Rule       -> "premise" | "assumption" | "by" RuleApply
+prod RuleApply  -> "con_i" "name" "name"
+prod Naming     -> "rbracket" "name" "lbracket"
+prod Formula    -> Formula "and" Formula
+                      | Formula "or" Formula
+                      | Formula "imp" Formula
+                      | "all" "low-term" Formula
+                      | "exi" "low-term" Formula
+                      | "not" Formula
+                      | Atom
+prod Atom       -> "lpar" Formula "rpar"
+                      | "name" OptArgs
+prod OptArgs    -> "name" OptArgs
+                      |
